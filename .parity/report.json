@@ -1,0 +1,44 @@
+[
+  {
+    "viewport": {
+      "name": "mobile",
+      "width": 390,
+      "height": 844
+    },
+    "diffPixels": 464000,
+    "width": 425,
+    "height": 4958,
+    "diffPct": 0.2202026433808699,
+    "basePath": "/Users/chriskarani/clawd/ollama/.parity/mobile.base.png",
+    "localPath": "/Users/chriskarani/clawd/ollama/.parity/mobile.local.png",
+    "diffPath": "/Users/chriskarani/clawd/ollama/.parity/mobile.diff.png"
+  },
+  {
+    "viewport": {
+      "name": "tablet",
+      "width": 768,
+      "height": 1024
+    },
+    "diffPixels": 290793,
+    "width": 768,
+    "height": 3185,
+    "diffPct": 0.1188812303767661,
+    "basePath": "/Users/chriskarani/clawd/ollama/.parity/tablet.base.png",
+    "localPath": "/Users/chriskarani/clawd/ollama/.parity/tablet.local.png",
+    "diffPath": "/Users/chriskarani/clawd/ollama/.parity/tablet.diff.png"
+  },
+  {
+    "viewport": {
+      "name": "desktop",
+      "width": 1440,
+      "height": 900
+    },
+    "diffPixels": 239145,
+    "width": 1440,
+    "height": 2924,
+    "diffPct": 0.05679648312813498,
+    "basePath": "/Users/chriskarani/clawd/ollama/.parity/desktop.base.png",
+    "localPath": "/Users/chriskarani/clawd/ollama/.parity/desktop.local.png",
+    "diffPath": "/Users/chriskarani/clawd/ollama/.parity/desktop.diff.png"
+  }
+]

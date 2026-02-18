@@ -1,0 +1,145 @@
+@import "tailwindcss";
+
+/* Instrument Serif — used ONLY for the "$0.30" struck-through price */
+.font-serif {
+  font-family: var(--font-instrument), Georgia, serif;
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+/* No dark mode — light only */
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+/* Custom selection */
+::selection {
+  background: #0a0a0a;
+  color: #fff;
+}
+
+/* ─── Animation Keyframes ─── */
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes typeIn {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Fade-in utility (triggered by IntersectionObserver) ─── */
+
+.fade-in {
+  opacity: 0;
+  transform: translateY(16px);
+  transition: opacity 600ms ease, transform 600ms ease;
+}
+
+.fade-in.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ─── Hero stagger animation ─── */
+
+.hero-stagger > * {
+  opacity: 0;
+  animation: fadeUp 600ms ease forwards;
+}
+
+.hero-stagger > *:nth-child(1) { animation-delay: 200ms; }
+.hero-stagger > *:nth-child(2) { animation-delay: 350ms; }
+.hero-stagger > *:nth-child(3) { animation-delay: 500ms; }
+.hero-stagger > *:nth-child(4) { animation-delay: 650ms; }
+.hero-stagger > *:nth-child(5) { animation-delay: 800ms; }
+
+/* ─── Blinking cursor ─── */
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
+
+/* ─── Dot grid background ─── */
+
+.dot-grid {
+  background-image: radial-gradient(circle, #000 1px, transparent 1px);
+  background-size: 24px 24px;
+  background-position: 0 0;
+}
+
+/* ─── Noise texture for dark section ─── */
+
+.noise-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.03;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 256px 256px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── Scroll progress bar ─── */
+
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 2px;
+  background: #0a0a0a;
+  transform-origin: left;
+  z-index: 100;
+}
+
+/* ─── Transaction log typing animation ─── */
+
+.type-line {
+  overflow: hidden;
+  white-space: nowrap;
+  width: 0;
+  animation: typeIn 0.5s steps(30) forwards;
+}
+
+.type-line:nth-child(1) { animation-delay: 400ms; }
+.type-line:nth-child(2) { animation-delay: 700ms; }
+.type-line:nth-child(3) { animation-delay: 1100ms; }
+.type-line:nth-child(4) { animation-delay: 1400ms; }
+.type-line:nth-child(5) { animation-delay: 1700ms; }
+.type-line:nth-child(6) { animation-delay: 2100ms; }
+.type-line:nth-child(7) { animation-delay: 2400ms; }
+.type-line:nth-child(8) { animation-delay: 2700ms; }
+.type-line:nth-child(9) { animation-delay: 3000ms; }
