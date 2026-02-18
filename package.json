@@ -10,8 +10,6 @@
     "parity:pixel": "node scripts/pixel-diff.mjs"
   },
   "dependencies": {
-    "@next/swc-darwin-arm64": "^16.1.6",
-    "lightningcss-darwin-arm64": "^1.31.1",
     "next": "16.1.6",
     "react": "19.2.3",
     "react-dom": "19.2.3",
