@@ -19,9 +19,9 @@ const instrumentSerif = Instrument_Serif({
 });
 
 export const metadata: Metadata = {
-  title: "Orca — x402 Settlement on Stellar",
+  title: "Orca — Runtime Guardrails for AI Agents",
   description:
-    "The developer-facing settlement layer for x402 on Stellar. 3–5 second finality. $0.0001 per transaction. Native USDC.",
+    "Local runtime guardrails for AI agents. Policy enforcement, secret redaction, tamper-evident audit logs, session replay, and native plugins for Codex, Claude Code, OpenCode, and OpenClaw.",
 };
 
 export default function RootLayout({
