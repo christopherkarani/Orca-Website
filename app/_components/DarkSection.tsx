@@ -33,7 +33,7 @@ export function DarkSection() {
           HOW IT WORKS
         </p>
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-10 text-center">
-          One CLI. Every host.
+          One local CLI. Multiple agent hosts.
         </h2>
 
         <div
@@ -94,7 +94,7 @@ zig build install`}
                 <div className="text-2xl mb-2 text-neutral-300">03</div>
                 <p className="text-sm font-medium text-white mb-1">Audit &amp; Replay</p>
                 <p className="text-xs text-neutral-500">
-                  Tamper-evident logs with full session replay for every agent interaction
+                  Tamper-evident local logs with replay for Orca-managed agent runs
                 </p>
               </div>
             </div>

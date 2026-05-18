@@ -8,23 +8,26 @@ type Host = "claude" | "codex" | "opencode" | "openclaw";
 const hostConfig: Record<Host, { label: string; code: string; lang?: string }> = {
   claude: {
     label: "Claude",
-    code: `claude plugin marketplace add chriskarani/orca
+    code: `claude plugin marketplace add christopherkarani/Orca
 claude plugin install orca@orca --scope user`,
   },
   codex: {
     label: "Codex",
-    code: `codex plugin marketplace add chriskarani/orca`,
+    code: `codex plugin marketplace add christopherkarani/Orca`,
   },
   opencode: {
     label: "OpenCode",
     code: `{
   "$schema": "https://opencode.ai/config.json",
-  "plugin": ["@orca/opencode-plugin"]
-}`,
+  "plugin": ["orca-opencode-plugin"]
+}
+
+npm install orca-opencode-plugin`,
   },
   openclaw: {
     label: "OpenClaw",
-    code: `openclaw plugins install clawhub:orca`,
+    code: `openclaw plugins install clawhub:orca-openclaw-plugin
+openclaw plugins install npm:orca-openclaw-plugin`,
   },
 };
 

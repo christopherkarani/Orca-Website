@@ -16,7 +16,7 @@ export function CTASection() {
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12">
           <Link
-            href="/quickstart"
+            href="/docs#install"
             className="group inline-flex items-center justify-center bg-black text-white rounded-full px-8 py-3 text-sm font-medium hover:bg-neutral-800 transition-colors w-full sm:w-auto"
           >
             Installation Guide{" "}
@@ -30,7 +30,7 @@ export function CTASection() {
             <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">&rarr;</span>
           </Link>
           <Link
-            href="/tutorial"
+            href="/docs#quickstart"
             className="group inline-flex items-center justify-center border border-neutral-300 text-neutral-900 rounded-full px-8 py-3 text-sm font-medium hover:bg-neutral-100 transition-colors w-full sm:w-auto"
           >
             Quick-Start Tutorial{" "}

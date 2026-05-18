@@ -1,7 +1,5 @@
 import Link from "next/link";
 
-const GITHUB_URL = "https://github.com/christopherkarani/Orca";
-
 function TerminalWindow() {
   const lines = [
     { text: "$ orca run --agent my-agent", color: "text-neutral-500" },
@@ -42,7 +40,7 @@ export function Hero() {
         <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
           <div className="hero-stagger">
             <p className="font-mono text-xs tracking-[0.2em] text-neutral-400 mb-6">
-              OPENSOURCE · ZIG · RUNTIME GUARDRAILS
+              LOCAL-FIRST · ZIG · RUNTIME GUARDRAILS
             </p>
             <h1 className="text-4xl md:text-5xl lg:text-7xl font-semibold tracking-tight leading-[1.05] mb-6">
               Orca&nbsp;&mdash; local runtime
@@ -52,22 +50,23 @@ export function Hero() {
               AI agents.
             </h1>
             <p className="text-base md:text-lg text-neutral-500 max-w-lg mb-8">
-              Policy enforcement, secret redaction, tamper-evident audit logs, session replay,
-              red-team tests, and native plugins for Codex, Claude Code, OpenCode, and OpenClaw.
+              Run AI agents through a local CLI that enforces policy, redacts secrets before
+              persistence, writes tamper-evident local audit logs, and replays sessions without
+              sending traces to Orca.
             </p>
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                href={GITHUB_URL}
+                href="/pricing"
                 className="group inline-flex items-center justify-center bg-black text-white rounded-full px-8 py-3 text-sm font-medium hover:bg-neutral-800 transition-colors"
               >
-                GitHub{" "}
+                View pricing{" "}
                 <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">&rarr;</span>
               </Link>
               <Link
-                href={GITHUB_URL}
+                href="/docs"
                 className="group inline-flex items-center justify-center border border-neutral-300 text-neutral-900 rounded-full px-8 py-3 text-sm font-medium hover:bg-neutral-100 transition-colors"
               >
-                GitHub{" "}
+                Read docs{" "}
                 <span className="ml-2 inline-block transition-transform group-hover:translate-x-1">&rarr;</span>
               </Link>
             </div>

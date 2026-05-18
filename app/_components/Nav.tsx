@@ -21,10 +21,22 @@ export function Nav() {
         </Link>
         <div className="flex items-center gap-6">
           <Link
+            href="/pricing"
+            className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Pricing
+          </Link>
+          <Link
             href="/docs"
             className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
           >
             Docs
+          </Link>
+          <Link
+            href="/account"
+            className="text-sm text-neutral-500 hover:text-neutral-900 transition-colors"
+          >
+            Account
           </Link>
           <Link
             href={GITHUB_URL}

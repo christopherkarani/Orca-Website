@@ -5,8 +5,8 @@ import pixelmatch from "pixelmatch";
 import { PNG } from "pngjs";
 
 const OUT_DIR = path.resolve(".parity");
-const BASE_URL = "https://ollama.com/";
-const LOCAL_URL = process.env.LOCAL_URL || "http://localhost:3003/";
+const BASE_URL = process.env.BASE_URL || "https://orca-tx.com/";
+const LOCAL_URL = process.env.LOCAL_URL || "http://localhost:3000/";
 
 const VIEWPORTS = [
   { name: "mobile", width: 390, height: 844 },

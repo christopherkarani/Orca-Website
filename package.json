@@ -1,18 +1,26 @@
 {
-  "name": "ollama",
+  "name": "orca-website",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "keys:generate": "node scripts/generate-license-keys.mjs",
+    "db:apply": "node scripts/apply-schema.mjs",
+    "webhook:fixture": "node scripts/stripe-webhook-fixture.mjs",
+    "preflight:prod": "node scripts/deploy-preflight.mjs",
     "lint": "eslint",
     "parity:pixel": "node scripts/pixel-diff.mjs"
   },
   "dependencies": {
-    "next": "16.1.6",
+    "next": "^16.2.6",
+    "postgres": "^3.4.9",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "stripe": "^22.1.1",
     "sugar-high": "^0.9.5"
   },
   "devDependencies": {
@@ -21,11 +29,15 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.1.6",
+    "eslint-config-next": "^16.2.6",
     "pixelmatch": "^7.1.0",
     "playwright": "^1.58.2",
     "pngjs": "^7.0.0",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.6"
+  },
+  "overrides": {
+    "postcss": "^8.5.10"
   }
 }

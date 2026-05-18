@@ -10,7 +10,7 @@ export function ComparisonSection() {
     <section className="fade-in">
       <div className="mx-auto max-w-5xl px-4 md:px-8 py-16 md:py-24">
         <p className="font-mono text-xs tracking-[0.2em] text-neutral-400 mb-8">
-          UNPROTECTED AGENTS vs WITH ORCA
+          UNWRAPPED COMMAND vs ORCA-MANAGED RUN
         </p>
 
         <div className="border border-neutral-200 rounded-xl p-6 md:p-8">
@@ -18,8 +18,8 @@ export function ComparisonSection() {
             <thead>
               <tr className="text-left text-xs text-neutral-400 border-b border-neutral-200">
                 <th className="pb-3 pr-8 font-normal"></th>
-                <th className="pb-3 pr-8 font-normal">Unprotected Agents</th>
-                <th className="pb-3 font-normal">With Orca</th>
+                <th className="pb-3 pr-8 font-normal">Unwrapped command</th>
+                <th className="pb-3 font-normal">Orca-managed run</th>
               </tr>
             </thead>
             <tbody>
@@ -41,12 +41,12 @@ export function ComparisonSection() {
 
         <div className="mt-10">
           <p className="text-xl md:text-2xl font-semibold mb-4">
-            Thousands of times safer.
+            Guardrails before the agent acts.
           </p>
           <p className="text-neutral-500 text-base leading-relaxed max-w-2xl">
-            Orca enables safe micro-transactions and secure command execution by
-            wrapping your agent with policy guardrails, secret redaction, and
-            tamper-evident audit before anything reaches disk or network.
+            Orca routes supported agent commands, tool calls, and file/network
+            decisions through policy checks, secret redaction, and tamper-evident
+            local audit before supervised work reaches the runtime.
           </p>
         </div>
       </div>

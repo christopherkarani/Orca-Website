@@ -1,17 +1,9 @@
-"use client";
-
-import { useRef } from "react";
-import { useCountUp } from "./useCountUp";
-
 export function EndToEndSection() {
-  const statRef = useRef<HTMLSpanElement>(null);
-  const { value } = useCountUp(statRef, 4700, 2000, 0);
-
   const capabilities = [
     ["hosts", "Multiple host support — Codex, Claude Code, OpenCode, OpenClaw"],
     ["policy", "Per-agent policy enforcement with deny-by-default rules"],
     ["redact", "Automatic secret redaction before log persistence"],
-    ["audit", "Tamper-evident audit logs with full session replay"],
+    ["audit", "Tamper-evident local audit logs with session replay"],
     ["tests", "Red-team test fixtures to measure agent risk posture"],
   ];
 
@@ -19,10 +11,10 @@ export function EndToEndSection() {
     <section className="fade-in">
       <div className="mx-auto max-w-5xl px-4 md:px-8 py-16 md:py-24">
         <p className="font-mono text-xs tracking-[0.2em] text-neutral-400 mb-4">
-          COMPLETE GUARDRAILS
+          LOCAL GUARDRAILS
         </p>
         <h2 className="text-2xl md:text-3xl font-semibold tracking-tight mb-10">
-          End-to-end agent security
+          Supervised runs without a hosted dashboard
         </h2>
 
         <div className="border border-neutral-200 rounded-xl p-5 md:p-6 font-mono text-sm mb-16">
@@ -37,18 +29,24 @@ export function EndToEndSection() {
           </div>
         </div>
 
-        <div className="text-center mb-12">
-          <p className="font-mono text-5xl md:text-6xl lg:text-7xl font-light">
-            <span ref={statRef}>{value.toLocaleString()}+</span>
-          </p>
-          <p className="text-neutral-500 text-sm md:text-base mt-3 max-w-md mx-auto">
-            agent sessions secured by Orca in early access
-          </p>
+        <div className="grid gap-4 md:grid-cols-4 mb-12">
+          {[
+            "Runs locally",
+            "Policy files live in your repo",
+            "Audit logs stay on your machine",
+            "CI mode supported",
+          ].map((label) => (
+            <div key={label} className="border border-neutral-200 p-5 text-center">
+              <p className="text-sm font-medium text-neutral-900">{label}</p>
+            </div>
+          ))}
         </div>
 
         <p className="text-neutral-500 text-base leading-relaxed max-w-2xl mx-auto text-center mb-10">
-          Orca is purpose-built for the agent era — wrapping every command, API call, and
-          file operation with policy guardrails before anything reaches the runtime.
+          Orca is purpose-built for local agent workflows: supported commands,
+          tool calls, and file/network decisions are checked before supervised work
+          reaches the runtime. No hosted monitoring, cloud sync, or telemetry upload
+          is required for license verification.
         </p>
       </div>
     </section>
