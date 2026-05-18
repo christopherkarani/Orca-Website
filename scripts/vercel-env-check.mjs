@@ -45,7 +45,11 @@ if (!Array.isArray(envs)) {
 
 const present = new Set(
   envs
-    .filter((env) => Array.isArray(env.target) && env.target.includes("production"))
+    .filter((env) =>
+      Array.isArray(env.target)
+        ? env.target.includes("production")
+        : env.target === "production"
+    )
     .map((env) => env.key)
 );
 const missing = requiredProductionEnv.filter((key) => !present.has(key));
