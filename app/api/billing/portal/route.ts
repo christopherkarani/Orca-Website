@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { getAccountFromRequest, getSessionTokenFromRequest } from "@/lib/server/auth";
+import { getAccountFromClerk, getClerkUserId } from "@/lib/server/auth";
 import { getStore } from "@/lib/server/db";
 import { getBaseUrl, requireStripeSecret } from "@/lib/server/env";
 import { rejectInvalidOrigin } from "@/lib/server/request-security";
@@ -8,13 +8,12 @@ import { rejectInvalidOrigin } from "@/lib/server/request-security";
 export async function POST(request: NextRequest) {
   const invalidOrigin = rejectInvalidOrigin(request);
   if (invalidOrigin) return invalidOrigin;
-
-  if (!getSessionTokenFromRequest(request)) {
+  if (!(await getClerkUserId())) {
     return NextResponse.redirect(new URL("/account?error=session", request.url), 303);
   }
 
   const store = getStore();
-  const account = await getAccountFromRequest(store, request);
+  const account = await getAccountFromClerk(store);
   if (!account) {
     return NextResponse.redirect(new URL("/account?error=session", request.url), 303);
   }

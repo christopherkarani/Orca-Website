@@ -16,6 +16,7 @@
     "parity:pixel": "node scripts/pixel-diff.mjs"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.5",
     "next": "^16.2.6",
     "postgres": "^3.4.9",
     "react": "19.2.3",

@@ -8,6 +8,11 @@ const stripeMocks = vi.hoisted(() => ({
   subscriptionRetrieve: vi.fn(),
 }));
 
+const clerkMocks = vi.hoisted(() => ({
+  auth: vi.fn(),
+  currentUser: vi.fn(),
+}));
+
 vi.mock("stripe", () => ({
   default: class StripeMock {
     checkout = {
@@ -22,6 +27,28 @@ vi.mock("stripe", () => ({
   },
 }));
 
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: clerkMocks.auth,
+  currentUser: clerkMocks.currentUser,
+}));
+
+async function setAuthenticatedAccount(
+  store: ReturnType<typeof createMemoryStore>,
+  accountId: string,
+  email: string
+) {
+  clerkMocks.auth.mockResolvedValue({ userId: `user_${accountId}` });
+  clerkMocks.currentUser.mockResolvedValue({
+    primaryEmailAddress: { emailAddress: email },
+    emailAddresses: [],
+  });
+  await store.upsertAccount({
+    id: accountId,
+    clerkUserId: `user_${accountId}`,
+    email,
+  });
+}
+
 describe("GET /api/auth/checkout-session", () => {
   const originalEnv = { ...process.env };
 
@@ -31,6 +58,8 @@ describe("GET /api/auth/checkout-session", () => {
     process.env.STRIPE_TEAM_PRICE_ID = "price_team";
     stripeMocks.checkoutRetrieve.mockReset();
     stripeMocks.subscriptionRetrieve.mockReset();
+    clerkMocks.auth.mockResolvedValue({ userId: null });
+    clerkMocks.currentUser.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -73,6 +102,7 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(store, "acct_period_missing", "period@example.com");
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({
@@ -101,6 +131,7 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(store, "acct_period_expired", "expired@example.com");
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({
@@ -130,6 +161,7 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(store, "acct_sub_lookup", "lookup@example.com");
     stripeMocks.checkoutRetrieve.mockResolvedValue({
       status: "complete",
       payment_status: "paid",
@@ -153,6 +185,7 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(store, "acct_checkout_ok", "team@example.com");
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({
@@ -175,7 +208,7 @@ describe("GET /api/auth/checkout-session", () => {
     const license = await store.getCurrentLicenseForAccount("acct_checkout_ok");
 
     expect(response.status).toBe(303);
-    expect(response.headers.get("set-cookie")).toContain("orca_session=");
+    expect(response.headers.get("set-cookie")).toBeNull();
     expect(license).toMatchObject({
       tier: "team",
       seatCount: 6,
@@ -187,6 +220,11 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(
+      store,
+      "acct_checkout_item_period",
+      "item-period@example.com"
+    );
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({
@@ -221,6 +259,7 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(store, "acct_checkout_trial", "trial@example.com");
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({
@@ -250,6 +289,11 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(
+      store,
+      "acct_checkout_price_source",
+      "price-source@example.com"
+    );
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({
@@ -280,6 +324,7 @@ describe("GET /api/auth/checkout-session", () => {
     const { GET } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
+    await setAuthenticatedAccount(store, "acct_unknown_price", "unknown-price@example.com");
     process.env.ORCA_LICENSE_PRIVATE_KEY_PEM = store.testPrivateKeyPem;
     process.env.ORCA_LICENSE_KEY_VERSION = "test-key";
     stripeMocks.checkoutRetrieve.mockResolvedValue({

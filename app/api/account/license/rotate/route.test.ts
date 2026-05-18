@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createMemoryStore } from "@/lib/server/memory-store";
-import { createSession } from "@/lib/server/auth";
+import { createAccountApiKey } from "@/lib/server/auth";
 import { setStoreForTests } from "@/lib/server/db";
 import { POST } from "./route";
 
@@ -16,15 +16,14 @@ describe("POST /api/account/license/rotate", () => {
   it("rotates the authenticated account's license", async () => {
     const store = createMemoryStore();
     setStoreForTests(store);
-    await store.upsertAccount({ id: "acct_rotate", email: "rotate@example.com" });
-    const session = await createSession(store, "acct_rotate");
+    const account = await store.upsertAccount({ id: "acct_rotate", email: "rotate@example.com" });
+    const { rawKey } = await createAccountApiKey(store, account.id, "CI");
 
     const response = await POST(
       new NextRequest("http://localhost/api/account/license/rotate", {
         method: "POST",
         headers: {
-          cookie: `orca_session=${session.token}`,
-          origin: "http://localhost",
+          authorization: `Bearer ${rawKey}`,
         },
       })
     );
@@ -64,16 +63,15 @@ describe("POST /api/account/license/rotate", () => {
   it("redirects browser form submissions back to the account dashboard", async () => {
     const store = createMemoryStore();
     setStoreForTests(store);
-    await store.upsertAccount({ id: "acct_rotate_form", email: "form@example.com" });
-    const session = await createSession(store, "acct_rotate_form");
+    const account = await store.upsertAccount({ id: "acct_rotate_form", email: "form@example.com" });
+    const { rawKey } = await createAccountApiKey(store, account.id, "CI");
 
     const response = await POST(
       new NextRequest("http://localhost/api/account/license/rotate", {
         method: "POST",
         headers: {
           accept: "text/html",
-          cookie: `orca_session=${session.token}`,
-          origin: "http://localhost",
+          authorization: `Bearer ${rawKey}`,
         },
       })
     );

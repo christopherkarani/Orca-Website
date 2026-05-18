@@ -1,4 +1,6 @@
 import { LicenseCopyButton } from "./LicenseCopyButton";
+import { ApiKeyManager } from "./ApiKeyManager";
+import type { AccountApiKeyRecord } from "@/lib/server/store";
 
 export function AccountDashboard({
   email,
@@ -6,12 +8,14 @@ export function AccountDashboard({
   seatCount,
   licenseKey,
   renewsAt,
+  apiKeys,
 }: {
   email: string;
   plan: "free" | "pro" | "team";
   seatCount: number;
   licenseKey: string;
   renewsAt?: string;
+  apiKeys: AccountApiKeyRecord[];
 }) {
   const planLabel = plan === "team" ? "Orca Team" : plan === "pro" ? "Orca Pro" : "Orca Free";
   const seatsLabel = plan === "team" ? `${seatCount} ${seatCount === 1 ? "seat" : "seats"}` : "1 seat";
@@ -107,6 +111,18 @@ export function AccountDashboard({
             Activation docs
           </a>
         </div>
+      </section>
+
+      <section className="lg:col-span-2 border border-neutral-200 bg-white p-6">
+        <p className="font-mono text-xs tracking-[0.2em] text-neutral-400 mb-4">
+          API KEYS
+        </p>
+        <h2 className="text-2xl font-semibold tracking-tight">License automation keys</h2>
+        <p className="mt-3 text-sm text-neutral-500">
+          Use these keys for scripts that fetch plan/license state. Billing remains protected
+          by your Clerk browser session.
+        </p>
+        <ApiKeyManager initialKeys={apiKeys} />
       </section>
     </div>
   );

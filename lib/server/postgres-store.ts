@@ -8,25 +8,36 @@ import {
 import { createSignedLicense } from "@/lib/license/contract";
 import type {
   AccountRecord,
+  AccountApiKeyRecord,
   CustomerRecord,
   IssueLicenseOptions,
-  LoginTokenRecord,
   LicenseRecord,
   OrcaStore,
-  SessionRecord,
   SubscriptionRecord,
   UpsertAccountInput,
   UpsertSubscriptionInput,
 } from "./store";
-import { sessionStorageKey } from "./session-token";
 
 type Sql = ReturnType<typeof postgres>;
 
 type AccountRow = {
   id: string;
+  clerk_user_id: string | null;
   email: string;
   created_at: Date | string;
   updated_at: Date | string;
+};
+
+type AccountApiKeyRow = {
+  id: string;
+  account_id: string;
+  name: string;
+  key_prefix: string;
+  key_last4: string;
+  scopes: string[] | string;
+  created_at: Date | string;
+  last_used_at: Date | string | null;
+  revoked_at: Date | string | null;
 };
 
 type CustomerRow = {
@@ -77,9 +88,24 @@ function iso(value: Date | string | null | undefined): string | undefined {
 function accountFromRow(row: AccountRow): AccountRecord {
   return {
     id: row.id,
+    clerkUserId: row.clerk_user_id ?? undefined,
     email: row.email,
     createdAt: iso(row.created_at)!,
     updatedAt: iso(row.updated_at)!,
+  };
+}
+
+function apiKeyFromRow(row: AccountApiKeyRow): AccountApiKeyRecord {
+  return {
+    id: row.id,
+    accountId: row.account_id,
+    name: row.name,
+    keyPrefix: row.key_prefix,
+    keyLast4: row.key_last4,
+    scopes: Array.isArray(row.scopes) ? row.scopes : JSON.parse(row.scopes),
+    createdAt: iso(row.created_at)!,
+    lastUsedAt: iso(row.last_used_at),
+    revokedAt: iso(row.revoked_at),
   };
 }
 
@@ -143,6 +169,17 @@ export class PostgresStore implements OrcaStore {
   async upsertAccount(input: UpsertAccountInput): Promise<AccountRecord> {
     const id = input.id ?? `acct_${randomUUID()}`;
     const email = normalizeEmail(input.email);
+    if (input.clerkUserId) {
+      const rows = await this.sql<AccountRow[]>`
+        INSERT INTO accounts (id, clerk_user_id, email)
+        VALUES (${id}, ${input.clerkUserId}, ${email})
+        ON CONFLICT (clerk_user_id) WHERE clerk_user_id IS NOT NULL DO UPDATE SET
+          email = EXCLUDED.email,
+          updated_at = now()
+        RETURNING *
+      `;
+      return accountFromRow(rows[0]);
+    }
     const rows = await this.sql<AccountRow[]>`
       INSERT INTO accounts (id, email)
       VALUES (${id}, ${email})
@@ -160,6 +197,13 @@ export class PostgresStore implements OrcaStore {
   async getAccountByEmail(email: string): Promise<AccountRecord | null> {
     const rows = await this.sql<AccountRow[]>`
       SELECT * FROM accounts WHERE email = ${normalizeEmail(email)} LIMIT 1
+    `;
+    return rows[0] ? accountFromRow(rows[0]) : null;
+  }
+
+  async getAccountByClerkUserId(clerkUserId: string): Promise<AccountRecord | null> {
+    const rows = await this.sql<AccountRow[]>`
+      SELECT * FROM accounts WHERE clerk_user_id = ${clerkUserId} LIMIT 1
     `;
     return rows[0] ? accountFromRow(rows[0]) : null;
   }
@@ -395,93 +439,62 @@ export class PostgresStore implements OrcaStore {
     `;
   }
 
-  async createSession(
-    accountId: string,
-    token: string,
-    expiresAt: string
-  ): Promise<SessionRecord> {
-    const tokenHash = sessionStorageKey(token);
-    const rows = await this.sql<
-      { token: string; account_id: string; expires_at: Date | string; created_at: Date | string }[]
-    >`
-      INSERT INTO account_sessions (token, account_id, expires_at)
-      VALUES (${tokenHash}, ${accountId}, ${expiresAt})
+  async createApiKey(input: {
+    id: string;
+    accountId: string;
+    name: string;
+    keyHash: string;
+    keyPrefix: string;
+    keyLast4: string;
+    scopes: string[];
+  }): Promise<AccountApiKeyRecord> {
+    const rows = await this.sql<AccountApiKeyRow[]>`
+      INSERT INTO account_api_keys (
+        id, account_id, name, key_hash, key_prefix, key_last4, scopes
+      )
+      VALUES (
+        ${input.id},
+        ${input.accountId},
+        ${input.name},
+        ${input.keyHash},
+        ${input.keyPrefix},
+        ${input.keyLast4},
+        ${this.sql.json(input.scopes)}
+      )
       RETURNING *
     `;
-    return {
-      token: rows[0].token,
-      accountId: rows[0].account_id,
-      expiresAt: iso(rows[0].expires_at)!,
-      createdAt: iso(rows[0].created_at)!,
-    };
+    return apiKeyFromRow(rows[0]);
   }
 
-  async getSession(token: string): Promise<SessionRecord | null> {
-    const tokenHash = sessionStorageKey(token);
-    const rows = await this.sql<
-      { token: string; account_id: string; expires_at: Date | string; created_at: Date | string }[]
-    >`
-      SELECT * FROM account_sessions
-      WHERE token = ${tokenHash} AND expires_at > now()
-      LIMIT 1
-    `;
-    if (!rows[0]) return null;
-    return {
-      token: rows[0].token,
-      accountId: rows[0].account_id,
-      expiresAt: iso(rows[0].expires_at)!,
-      createdAt: iso(rows[0].created_at)!,
-    };
-  }
-
-  async createLoginToken(
-    accountId: string,
-    token: string,
-    expiresAt: string
-  ): Promise<LoginTokenRecord> {
-    const tokenHash = sessionStorageKey(token);
-    const rows = await this.sql<
-      {
-        token_hash: string;
-        account_id: string;
-        expires_at: Date | string;
-        consumed_at: Date | string | null;
-        created_at: Date | string;
-      }[]
-    >`
-      INSERT INTO account_login_tokens (token_hash, account_id, expires_at)
-      VALUES (${tokenHash}, ${accountId}, ${expiresAt})
-      RETURNING *
-    `;
-    return {
-      tokenHash: rows[0].token_hash,
-      accountId: rows[0].account_id,
-      expiresAt: iso(rows[0].expires_at)!,
-      consumedAt: iso(rows[0].consumed_at),
-      createdAt: iso(rows[0].created_at)!,
-    };
-  }
-
-  async consumeLoginToken(token: string): Promise<string | null> {
-    const tokenHash = sessionStorageKey(token);
-    const rows = await this.sql<{ account_id: string }[]>`
-      UPDATE account_login_tokens
-      SET consumed_at = now()
-      WHERE token_hash = ${tokenHash}
-        AND consumed_at IS NULL
-        AND expires_at > now()
-      RETURNING account_id
-    `;
-    return rows[0]?.account_id ?? null;
-  }
-
-  async countRecentLoginTokens(accountId: string, since: string): Promise<number> {
-    const rows = await this.sql<{ count: string }[]>`
-      SELECT count(*)::text AS count
-      FROM account_login_tokens
+  async listApiKeys(accountId: string): Promise<AccountApiKeyRecord[]> {
+    const rows = await this.sql<AccountApiKeyRow[]>`
+      SELECT * FROM account_api_keys
       WHERE account_id = ${accountId}
-        AND created_at >= ${since}
+      ORDER BY created_at DESC
     `;
-    return Number.parseInt(rows[0]?.count ?? "0", 10);
+    return rows.map(apiKeyFromRow);
+  }
+
+  async revokeApiKey(accountId: string, keyId: string): Promise<void> {
+    await this.sql`
+      UPDATE account_api_keys
+      SET revoked_at = COALESCE(revoked_at, now())
+      WHERE account_id = ${accountId} AND id = ${keyId}
+    `;
+  }
+
+  async getActiveApiKeyByHash(
+    keyId: string,
+    keyHash: string
+  ): Promise<AccountApiKeyRecord | null> {
+    const rows = await this.sql<AccountApiKeyRow[]>`
+      UPDATE account_api_keys
+      SET last_used_at = now()
+      WHERE id = ${keyId}
+        AND key_hash = ${keyHash}
+        AND revoked_at IS NULL
+      RETURNING *
+    `;
+    return rows[0] ? apiKeyFromRow(rows[0]) : null;
   }
 }

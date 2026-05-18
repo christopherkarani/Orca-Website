@@ -11,6 +11,7 @@ describe("account dashboard rendering", () => {
         seatCount={1}
         licenseKey="orca_payload.signature"
         renewsAt="2026-06-17T00:00:00.000Z"
+        apiKeys={[]}
       />
     );
 
@@ -29,6 +30,7 @@ describe("account dashboard rendering", () => {
         plan="team"
         seatCount={7}
         licenseKey="orca_payload.signature"
+        apiKeys={[]}
       />
     );
 

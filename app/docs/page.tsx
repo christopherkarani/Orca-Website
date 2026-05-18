@@ -380,8 +380,8 @@ orca policy explain network https://example.invalid/path`}
                   call this website while your agents run.
                 </p>
                 <p className="text-neutral-500 leading-relaxed max-w-3xl">
-                  If your browser session is gone later, request a one-time account link
-                  from the Account page using the same email used at checkout.
+                  If your browser session is gone later, sign back in with Clerk using
+                  GitHub or email to view the same account and license.
                 </p>
                 <div className="grid gap-4 md:grid-cols-4">
                   {[

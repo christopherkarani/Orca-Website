@@ -15,8 +15,9 @@ The Checkout success URL must route through:
 https://orca-tx.com/api/auth/checkout-session?session_id={CHECKOUT_SESSION_ID}
 ```
 
-That route retrieves the Checkout Session from Stripe before setting the account session cookie.
-The website does not persist the account until Stripe confirms the paid Checkout
+That route retrieves the Checkout Session from Stripe and links it to the
+currently signed-in Clerk user.
+The website does not issue a paid license until Stripe confirms the paid Checkout
 Session on that success route or through signed subscription webhooks.
 License entitlements are mapped from the actual Stripe subscription Price ID,
 not from browser-submitted form fields or Checkout metadata.

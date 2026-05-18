@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
-import { createSession, SESSION_COOKIE } from "@/lib/server/auth";
+import { getAccountFromClerk } from "@/lib/server/auth";
 import { getStore } from "@/lib/server/db";
 import {
   getStripeConfig,
   getLicenseSigningConfig,
-  isProductionRuntime,
   requireStripeSecret,
 } from "@/lib/server/env";
 import {
@@ -77,7 +76,10 @@ export async function GET(request: NextRequest) {
   }
 
   const store = getStore();
-  const account = await store.upsertAccount({ id: accountId, email });
+  const account = await getAccountFromClerk(store);
+  if (!account || account.id !== accountId || account.email !== email.toLowerCase()) {
+    return NextResponse.redirect(new URL("/sign-in?redirect_url=/account", request.url), 303);
+  }
   let stripeSubscription: Stripe.Subscription;
   try {
     stripeSubscription = await stripe.subscriptions.retrieve(stripeSubscriptionId);
@@ -124,14 +126,5 @@ export async function GET(request: NextRequest) {
     privateKeyPem: signing.privateKeyPem,
     keyVersion: signing.keyVersion,
   });
-  const session = await createSession(store, account.id);
-  const response = NextResponse.redirect(new URL("/account?checkout=success", request.url), 303);
-  response.cookies.set(SESSION_COOKIE, session.token, {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: isProductionRuntime(),
-    path: "/",
-    expires: new Date(session.expiresAt),
-  });
-  return response;
+  return NextResponse.redirect(new URL("/account?checkout=success", request.url), 303);
 }

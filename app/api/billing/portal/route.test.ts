@@ -1,11 +1,15 @@
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createSession } from "@/lib/server/auth";
 import { setStoreForTests } from "@/lib/server/db";
 import { createMemoryStore } from "@/lib/server/memory-store";
 
 const stripeMocks = vi.hoisted(() => ({
   portalCreate: vi.fn(),
+}));
+
+const clerkMocks = vi.hoisted(() => ({
+  auth: vi.fn(),
+  currentUser: vi.fn(),
 }));
 
 vi.mock("stripe", () => ({
@@ -18,6 +22,11 @@ vi.mock("stripe", () => ({
   },
 }));
 
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: clerkMocks.auth,
+  currentUser: clerkMocks.currentUser,
+}));
+
 describe("POST /api/billing/portal", () => {
   const originalEnv = { ...process.env };
 
@@ -25,6 +34,8 @@ describe("POST /api/billing/portal", () => {
     process.env.STRIPE_SECRET_KEY = "sk_test_portal";
     process.env.ORCA_SITE_URL = "https://orca-tx.com";
     stripeMocks.portalCreate.mockReset();
+    clerkMocks.auth.mockResolvedValue({ userId: null });
+    clerkMocks.currentUser.mockResolvedValue(null);
   });
 
   afterEach(() => {
@@ -70,7 +81,12 @@ describe("POST /api/billing/portal", () => {
     const { POST } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
-    await store.upsertAccount({ id: "acct_portal", email: "portal@example.com" });
+    clerkMocks.auth.mockResolvedValue({ userId: "user_portal" });
+    await store.upsertAccount({
+      id: "acct_portal",
+      clerkUserId: "user_portal",
+      email: "portal@example.com",
+    });
     await store.upsertSubscription({
       accountId: "acct_portal",
       customerId: "cus_portal",
@@ -80,7 +96,6 @@ describe("POST /api/billing/portal", () => {
       seatCount: 1,
       currentPeriodEnd: "2026-06-17T00:00:00.000Z",
     });
-    const session = await createSession(store, "acct_portal");
     stripeMocks.portalCreate.mockResolvedValue({
       url: "https://billing.stripe.com/p/session/test",
     });
@@ -89,7 +104,6 @@ describe("POST /api/billing/portal", () => {
       new NextRequest("http://localhost/api/billing/portal", {
         method: "POST",
         headers: {
-          cookie: `orca_session=${session.token}`,
           origin: "http://localhost",
         },
       })
@@ -107,7 +121,12 @@ describe("POST /api/billing/portal", () => {
     const { POST } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
-    await store.upsertAccount({ id: "acct_portal_overlap", email: "overlap@example.com" });
+    clerkMocks.auth.mockResolvedValue({ userId: "user_portal_overlap" });
+    await store.upsertAccount({
+      id: "acct_portal_overlap",
+      clerkUserId: "user_portal_overlap",
+      email: "overlap@example.com",
+    });
     await store.upsertSubscription({
       accountId: "acct_portal_overlap",
       customerId: "cus_old_canceled",
@@ -125,7 +144,6 @@ describe("POST /api/billing/portal", () => {
       seatCount: 4,
       currentPeriodEnd: "2026-07-18T00:00:00.000Z",
     });
-    const session = await createSession(store, "acct_portal_overlap");
     stripeMocks.portalCreate.mockResolvedValue({
       url: "https://billing.stripe.com/p/session/active",
     });
@@ -134,7 +152,6 @@ describe("POST /api/billing/portal", () => {
       new NextRequest("http://localhost/api/billing/portal", {
         method: "POST",
         headers: {
-          cookie: `orca_session=${session.token}`,
           origin: "http://localhost",
         },
       })
@@ -165,7 +182,12 @@ describe("POST /api/billing/portal", () => {
     const { POST } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
-    await store.upsertAccount({ id: "acct_portal_error", email: "error@example.com" });
+    clerkMocks.auth.mockResolvedValue({ userId: "user_portal_error" });
+    await store.upsertAccount({
+      id: "acct_portal_error",
+      clerkUserId: "user_portal_error",
+      email: "error@example.com",
+    });
     await store.upsertSubscription({
       accountId: "acct_portal_error",
       customerId: "cus_portal_error",
@@ -175,14 +197,12 @@ describe("POST /api/billing/portal", () => {
       seatCount: 1,
       currentPeriodEnd: "2026-06-17T00:00:00.000Z",
     });
-    const session = await createSession(store, "acct_portal_error");
     stripeMocks.portalCreate.mockRejectedValue(new Error("portal not configured"));
 
     const response = await POST(
       new NextRequest("http://localhost/api/billing/portal", {
         method: "POST",
         headers: {
-          cookie: `orca_session=${session.token}`,
           origin: "http://localhost",
         },
       })
@@ -196,7 +216,12 @@ describe("POST /api/billing/portal", () => {
     const { POST } = await import("./route");
     const store = createMemoryStore();
     setStoreForTests(store);
-    await store.upsertAccount({ id: "acct_portal_missing_url", email: "missing@example.com" });
+    clerkMocks.auth.mockResolvedValue({ userId: "user_portal_missing_url" });
+    await store.upsertAccount({
+      id: "acct_portal_missing_url",
+      clerkUserId: "user_portal_missing_url",
+      email: "missing@example.com",
+    });
     await store.upsertSubscription({
       accountId: "acct_portal_missing_url",
       customerId: "cus_portal_missing_url",
@@ -206,14 +231,12 @@ describe("POST /api/billing/portal", () => {
       seatCount: 1,
       currentPeriodEnd: "2026-06-17T00:00:00.000Z",
     });
-    const session = await createSession(store, "acct_portal_missing_url");
     stripeMocks.portalCreate.mockResolvedValue({});
 
     const response = await POST(
       new NextRequest("http://localhost/api/billing/portal", {
         method: "POST",
         headers: {
-          cookie: `orca_session=${session.token}`,
           origin: "http://localhost",
         },
       })

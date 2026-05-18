@@ -2,24 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAccountForLicenseRequest, getClerkUserId } from "@/lib/server/auth";
 import { getLicenseSigningConfig } from "@/lib/server/env";
 import { getStore } from "@/lib/server/db";
-import type { OrcaStore } from "@/lib/server/store";
-
-function licenseResponse(license: Awaited<ReturnType<OrcaStore["getCurrentLicenseForAccount"]>>) {
-  if (!license) return null;
-  return {
-    licenseId: license.id,
-    accountId: license.accountId,
-    tier: license.tier,
-    status: license.status,
-    seatCount: license.seatCount,
-    features: license.features,
-    licenseKey: license.licenseKey,
-    signature: license.signature,
-    issuedAt: license.issuedAt,
-    renewsAt: license.renewsAt,
-    expiresAt: license.expiresAt,
-  };
-}
 
 export async function GET(request: NextRequest) {
   const hasBearer = request.headers.get("authorization")?.startsWith("Bearer ");
@@ -27,9 +9,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }
   const store = getStore();
-  const account = await getAccountForLicenseRequest(store, request, "license:read");
+  const account = await getAccountForLicenseRequest(store, request, "plan:read");
   if (!account) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    return NextResponse.json(
+      { error: hasBearer ? "Invalid API key" : "Unauthenticated" },
+      { status: 401 }
+    );
   }
 
   let license = await store.getCurrentLicenseForAccount(account.id);
@@ -42,7 +27,13 @@ export async function GET(request: NextRequest) {
   }
 
   return NextResponse.json({
-    license: licenseResponse(license),
-    activationCommand: `orca license activate ${license.licenseKey}`,
+    plan: {
+      tier: license.tier,
+      status: license.status,
+      seatCount: license.seatCount,
+      features: license.features,
+      renewsAt: license.renewsAt,
+      expiresAt: license.expiresAt,
+    },
   });
 }

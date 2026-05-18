@@ -13,17 +13,15 @@ describe("production readiness assessment", () => {
 
     expect(report.ok).toBe(false);
     expect(report.checks.filter((check) => !check.ok).map((check) => check.name)).toContain(
-      "auth_secret"
+      "clerk_secret_key"
     );
   });
 
   it("accepts complete production-shaped configuration", () => {
     const report = assessProductionReadiness({
       ORCA_SITE_URL: "https://orca-tx.com",
-      ORCA_AUTH_SECRET: "x".repeat(32),
-      RESEND_API_KEY: "re_live_123",
-      ORCA_EMAIL_FROM: "Orca <accounts@orca-tx.com>",
-      ORCA_PREFLIGHT_EMAIL_TO: "ops@orca-tx.com",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_123",
+      CLERK_SECRET_KEY: "sk_live_123",
       DATABASE_URL: "postgres://orca:secret@db.orca-tx.internal:5432/orca",
       STRIPE_SECRET_KEY: "sk_live_123",
       STRIPE_WEBHOOK_SECRET: "whsec_123",
@@ -44,10 +42,8 @@ describe("production readiness assessment", () => {
     });
     const report = assessProductionReadiness({
       ORCA_SITE_URL: "https://orca-tx.com",
-      ORCA_AUTH_SECRET: "x".repeat(32),
-      RESEND_API_KEY: "re_live_123",
-      ORCA_EMAIL_FROM: "Orca <accounts@orca-tx.com>",
-      ORCA_PREFLIGHT_EMAIL_TO: "ops@orca-tx.com",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_123",
+      CLERK_SECRET_KEY: "sk_live_123",
       DATABASE_URL: "postgres://orca:secret@db.orca-tx.internal:5432/orca",
       STRIPE_SECRET_KEY: "sk_live_123",
       STRIPE_WEBHOOK_SECRET: "whsec_123",
@@ -67,10 +63,8 @@ describe("production readiness assessment", () => {
   it("rejects production-shaped placeholder secrets", () => {
     const report = assessProductionReadiness({
       ORCA_SITE_URL: "https://orca-tx.com",
-      ORCA_AUTH_SECRET: "replace_with_32_plus_random_bytes",
-      RESEND_API_KEY: "re_live_replace_me",
-      ORCA_EMAIL_FROM: "Orca <accounts@orca-tx.com>",
-      ORCA_PREFLIGHT_EMAIL_TO: "replace_with_ops_email",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_replace_me",
+      CLERK_SECRET_KEY: "sk_live_replace_me",
       DATABASE_URL: "postgres://orca:secret@db.orca-tx.internal:5432/orca",
       STRIPE_SECRET_KEY: "sk_live_replace_me",
       STRIPE_WEBHOOK_SECRET: "whsec_replace_me",
@@ -86,10 +80,10 @@ describe("production readiness assessment", () => {
       expect.objectContaining({ name: "stripe_webhook_secret", ok: false })
     );
     expect(report.checks).toContainEqual(
-      expect.objectContaining({ name: "email_api_key", ok: false })
+      expect.objectContaining({ name: "clerk_publishable_key", ok: false })
     );
     expect(report.checks).toContainEqual(
-      expect.objectContaining({ name: "preflight_email_to", ok: false })
+      expect.objectContaining({ name: "clerk_secret_key", ok: false })
     );
     expect(report.checks).toContainEqual(
       expect.objectContaining({ name: "license_key_version", ok: false })
@@ -99,10 +93,8 @@ describe("production readiness assessment", () => {
   it("rejects generic placeholder-shaped values", () => {
     const report = assessProductionReadiness({
       ORCA_SITE_URL: "https://orca-tx.com",
-      ORCA_AUTH_SECRET: "placeholder_auth_secret_with_32_bytes",
-      RESEND_API_KEY: "re_live_placeholder",
-      ORCA_EMAIL_FROM: "Orca <accounts@orca-tx.com>",
-      ORCA_PREFLIGHT_EMAIL_TO: "ops@orca-tx.com",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_placeholder",
+      CLERK_SECRET_KEY: "sk_live_placeholder",
       DATABASE_URL: "postgres://orca:placeholder@db.orca-tx.internal:5432/orca",
       STRIPE_SECRET_KEY: "sk_live_placeholder",
       STRIPE_WEBHOOK_SECRET: "whsec_placeholder",
@@ -115,7 +107,7 @@ describe("production readiness assessment", () => {
 
     expect(report.ok).toBe(false);
     expect(report.checks).toContainEqual(
-      expect.objectContaining({ name: "auth_secret", ok: false })
+      expect.objectContaining({ name: "clerk_secret_key", ok: false })
     );
     expect(report.checks).toContainEqual(
       expect.objectContaining({ name: "stripe_secret", ok: false })
@@ -125,13 +117,11 @@ describe("production readiness assessment", () => {
     );
   });
 
-  it("rejects placeholder email senders", () => {
+  it("rejects placeholder Clerk keys", () => {
     const report = assessProductionReadiness({
       ORCA_SITE_URL: "https://orca-tx.com",
-      ORCA_AUTH_SECRET: "x".repeat(32),
-      RESEND_API_KEY: "re_live_123",
-      ORCA_EMAIL_FROM: "Orca <accounts@example.com>",
-      ORCA_PREFLIGHT_EMAIL_TO: "ops@orca-tx.com",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_replace_me",
+      CLERK_SECRET_KEY: "sk_live_replace_me",
       DATABASE_URL: "postgres://orca:secret@db.orca-tx.internal:5432/orca",
       STRIPE_SECRET_KEY: "sk_live_123",
       STRIPE_WEBHOOK_SECRET: "whsec_123",
@@ -144,7 +134,7 @@ describe("production readiness assessment", () => {
 
     expect(report.ok).toBe(false);
     expect(report.checks).toContainEqual(
-      expect.objectContaining({ name: "email_from", ok: false })
+      expect.objectContaining({ name: "clerk_publishable_key", ok: false })
     );
   });
 
@@ -156,10 +146,8 @@ describe("production readiness assessment", () => {
     });
     const report = assessProductionReadiness({
       ORCA_SITE_URL: "https://orca-tx.com",
-      ORCA_AUTH_SECRET: "x".repeat(32),
-      RESEND_API_KEY: "re_live_123",
-      ORCA_EMAIL_FROM: "Orca <accounts@orca-tx.com>",
-      ORCA_PREFLIGHT_EMAIL_TO: "ops@orca-tx.com",
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: "pk_live_123",
+      CLERK_SECRET_KEY: "sk_live_123",
       DATABASE_URL: "postgres://orca:secret@db.orca-tx.internal:5432/orca",
       STRIPE_SECRET_KEY: "sk_live_123",
       STRIPE_WEBHOOK_SECRET: "whsec_123",

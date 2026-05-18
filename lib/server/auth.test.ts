@@ -1,63 +1,69 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { NextRequest } from "next/server";
+import { describe, expect, it } from "vitest";
+import {
+  createAccountApiKey,
+  getAccountFromApiKey,
+  getAccountForLicenseRequest,
+} from "./auth";
 import { createMemoryStore } from "./memory-store";
-import { createLoginToken, createSession, getAccountFromSessionToken } from "./auth";
-import { sessionStorageKey } from "./session-token";
 
-describe("account session signing", () => {
-  const originalRuntimeEnv = process.env.ORCA_RUNTIME_ENV;
-  const originalSecret = process.env.ORCA_AUTH_SECRET;
-
-  afterEach(() => {
-    process.env.ORCA_RUNTIME_ENV = originalRuntimeEnv;
-    process.env.ORCA_AUTH_SECRET = originalSecret;
-  });
-
-  it("requires an auth secret in production", async () => {
-    process.env.ORCA_RUNTIME_ENV = "production";
-    delete process.env.ORCA_AUTH_SECRET;
+describe("account API keys", () => {
+  it("stores only hashed API keys and authenticates by bearer token", async () => {
     const store = createMemoryStore();
-    await store.upsertAccount({ id: "acct_prod", email: "prod@example.com" });
+    const account = await store.upsertAccount({
+      id: "acct_api",
+      clerkUserId: "user_api",
+      email: "api@example.com",
+    });
+    const { rawKey, record } = await createAccountApiKey(store, account.id, "CI");
 
-    await expect(createSession(store, "acct_prod")).rejects.toThrow(
-      "ORCA_AUTH_SECRET is required in production"
-    );
+    expect(rawKey).toMatch(/^orca_key_oak_/);
+    expect(record.keyLast4).toBe(rawKey.slice(-4));
+    expect(JSON.stringify(await store.listApiKeys(account.id))).not.toContain(rawKey);
+
+    const request = new NextRequest("https://orca-tx.com/api/account/license", {
+      headers: { authorization: `Bearer ${rawKey}` },
+    });
+    const authenticated = await getAccountFromApiKey(store, request, "license:read");
+
+    expect(authenticated?.account.id).toBe(account.id);
+    expect(authenticated?.apiKey.lastUsedAt).toBeDefined();
   });
 
-  it("requires a persisted session record in production", async () => {
-    process.env.ORCA_RUNTIME_ENV = "production";
-    process.env.ORCA_AUTH_SECRET = "a-production-session-secret-with-32-bytes";
-    const issuingStore = createMemoryStore();
-    await issuingStore.upsertAccount({ id: "acct_session", email: "session@example.com" });
-    const session = await createSession(issuingStore, "acct_session");
-
-    const freshStoreWithoutSession = createMemoryStore();
-    const account = await getAccountFromSessionToken(
-      freshStoreWithoutSession,
-      session.token
-    );
-
-    expect(account).toBeNull();
-  });
-
-  it("stores only a session token hash while authenticating with the raw cookie token", async () => {
+  it("rejects revoked keys", async () => {
     const store = createMemoryStore();
-    await store.upsertAccount({ id: "acct_hash", email: "hash@example.com" });
-    const session = await createSession(store, "acct_hash");
+    const account = await store.upsertAccount({
+      id: "acct_revoked",
+      clerkUserId: "user_revoked",
+      email: "revoked@example.com",
+    });
+    const { rawKey, record } = await createAccountApiKey(store, account.id, "CI");
+    await store.revokeApiKey(account.id, record.id);
 
-    const account = await getAccountFromSessionToken(store, session.token);
-    const persistedSession = await store.getSession(session.token);
+    const request = new NextRequest("https://orca-tx.com/api/account/license", {
+      headers: { authorization: `Bearer ${rawKey}` },
+    });
 
-    expect(account?.id).toBe("acct_hash");
-    expect(session.token).toContain(".");
-    expect(persistedSession?.token).toBe(sessionStorageKey(session.token));
+    await expect(getAccountFromApiKey(store, request, "license:read")).resolves.toBeNull();
   });
 
-  it("stores login tokens as hashes and consumes them only once", async () => {
+  it("rejects keys without the required scope", async () => {
     const store = createMemoryStore();
-    await store.upsertAccount({ id: "acct_login_hash", email: "login-hash@example.com" });
-    const loginToken = await createLoginToken(store, "acct_login_hash");
+    const account = await store.upsertAccount({
+      id: "acct_scope",
+      clerkUserId: "user_scope",
+      email: "scope@example.com",
+    });
+    const { rawKey } = await createAccountApiKey(store, account.id, "Read only", [
+      "license:read",
+    ]);
 
-    await expect(store.consumeLoginToken(loginToken.token)).resolves.toBe("acct_login_hash");
-    await expect(store.consumeLoginToken(loginToken.token)).resolves.toBeNull();
+    const request = new NextRequest("https://orca-tx.com/api/account/license/rotate", {
+      headers: { authorization: `Bearer ${rawKey}` },
+    });
+
+    await expect(
+      getAccountForLicenseRequest(store, request, "license:rotate")
+    ).resolves.toBeNull();
   });
 });

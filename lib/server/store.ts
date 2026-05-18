@@ -2,6 +2,7 @@ import type { OrcaTier } from "@/lib/billing/entitlements";
 
 export type AccountRecord = {
   id: string;
+  clerkUserId?: string;
   email: string;
   createdAt: string;
   updatedAt: string;
@@ -62,10 +63,23 @@ export type LoginTokenRecord = {
   createdAt: string;
 };
 
+export type AccountApiKeyRecord = {
+  id: string;
+  accountId: string;
+  name: string;
+  keyPrefix: string;
+  keyLast4: string;
+  scopes: string[];
+  createdAt: string;
+  lastUsedAt?: string;
+  revokedAt?: string;
+};
+
 export type WebhookEventStatus = "processing" | "processed";
 
 export type UpsertAccountInput = {
   id?: string;
+  clerkUserId?: string;
   email: string;
 };
 
@@ -90,6 +104,7 @@ export type OrcaStore = {
   upsertAccount(input: UpsertAccountInput): Promise<AccountRecord>;
   getAccountById(id: string): Promise<AccountRecord | null>;
   getAccountByEmail(email: string): Promise<AccountRecord | null>;
+  getAccountByClerkUserId(clerkUserId: string): Promise<AccountRecord | null>;
   upsertCustomer(input: {
     accountId: string;
     stripeCustomerId: string;
@@ -114,13 +129,16 @@ export type OrcaStore = {
   claimWebhookEvent(eventId: string, type: string, created: number): Promise<boolean>;
   completeWebhookEvent(eventId: string): Promise<void>;
   releaseWebhookEvent(eventId: string): Promise<void>;
-  createSession(accountId: string, token: string, expiresAt: string): Promise<SessionRecord>;
-  getSession(token: string): Promise<SessionRecord | null>;
-  createLoginToken(
-    accountId: string,
-    token: string,
-    expiresAt: string
-  ): Promise<LoginTokenRecord>;
-  consumeLoginToken(token: string): Promise<string | null>;
-  countRecentLoginTokens(accountId: string, since: string): Promise<number>;
+  createApiKey(input: {
+    id: string;
+    accountId: string;
+    name: string;
+    keyHash: string;
+    keyPrefix: string;
+    keyLast4: string;
+    scopes: string[];
+  }): Promise<AccountApiKeyRecord>;
+  listApiKeys(accountId: string): Promise<AccountApiKeyRecord[]>;
+  revokeApiKey(accountId: string, keyId: string): Promise<void>;
+  getActiveApiKeyByHash(keyId: string, keyHash: string): Promise<AccountApiKeyRecord | null>;
 };

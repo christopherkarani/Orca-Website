@@ -1,4 +1,4 @@
-import { generateKeyPairSync, randomBytes } from "node:crypto";
+import { generateKeyPairSync } from "node:crypto";
 import { writeFileSync, chmodSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -19,7 +19,6 @@ const output = [
   `ORCA_LICENSE_KEY_VERSION=${keyVersion}`,
   `ORCA_LICENSE_PRIVATE_KEY_PEM="${escapedPrivateKey}"`,
   `ORCA_LICENSE_PUBLIC_KEY_PEM="${escapedPublicKey}"`,
-  `ORCA_AUTH_SECRET=${randomBytes(32).toString("base64url")}`,
   "",
 ].join("\n");
 

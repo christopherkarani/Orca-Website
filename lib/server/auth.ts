@@ -1,140 +1,130 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
+import { auth, currentUser } from "@clerk/nextjs/server";
 import type { NextRequest } from "next/server";
 import { isProductionRuntime } from "./env";
-import type { AccountRecord, OrcaStore } from "./store";
+import type { AccountApiKeyRecord, AccountRecord, OrcaStore } from "./store";
 
-export const SESSION_COOKIE = "orca_session";
+export const API_KEY_SCOPES = ["license:read", "license:rotate", "plan:read"] as const;
 
-function parseCookie(header: string | null, name: string): string | null {
-  if (!header) return null;
-  for (const part of header.split(";")) {
-    const [rawKey, ...rawValue] = part.trim().split("=");
-    if (rawKey === name) return decodeURIComponent(rawValue.join("="));
-  }
-  return null;
+type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
 }
 
-export async function createSession(
-  store: OrcaStore,
-  accountId: string,
-  options: { now?: Date; days?: number } = {}
-) {
-  const now = options.now ?? new Date();
-  const expiresAt = new Date(now);
-  expiresAt.setDate(expiresAt.getDate() + (options.days ?? 30));
-  const account = await store.getAccountById(accountId);
-  if (!account) throw new Error(`Unknown account ${accountId}`);
-  const token = signSessionToken({
-    accountId,
-    email: account.email,
-    expiresAt: expiresAt.toISOString(),
-    nonce: base64Url(randomBytes(16)),
-  });
-  const session = await store.createSession(accountId, token, expiresAt.toISOString());
-  return { ...session, token };
+function hashApiKey(secret: string): string {
+  return createHash("sha256").update(secret).digest("hex");
 }
 
-export async function createLoginToken(
-  store: OrcaStore,
-  accountId: string,
-  options: { now?: Date; minutes?: number } = {}
-) {
-  const now = options.now ?? new Date();
-  const expiresAt = new Date(now);
-  expiresAt.setMinutes(expiresAt.getMinutes() + (options.minutes ?? 15));
-  const token = base64Url(randomBytes(32));
-  await store.createLoginToken(accountId, token, expiresAt.toISOString());
-  return { token, expiresAt: expiresAt.toISOString() };
+function parseBearerToken(request: NextRequest): string | null {
+  const header = request.headers.get("authorization");
+  if (!header?.startsWith("Bearer ")) return null;
+  return header.slice("Bearer ".length).trim() || null;
 }
 
-export async function getAccountFromRequest(
-  store: OrcaStore,
-  request: NextRequest
-): Promise<AccountRecord | null> {
-  const token = getSessionTokenFromRequest(request);
-  return getAccountFromSessionToken(store, token);
+function parseApiKey(rawKey: string): { id: string; hash: string } | null {
+  const match = /^orca_key_(oak_[a-zA-Z0-9-]+)_([a-zA-Z0-9_-]{32,})$/.exec(rawKey);
+  if (!match) return null;
+  return { id: match[1], hash: hashApiKey(rawKey) };
 }
 
-export function getSessionTokenFromRequest(request: NextRequest): string | null {
-  return parseCookie(request.headers.get("cookie"), SESSION_COOKIE);
-}
-
-export async function getAccountFromSessionToken(
-  store: OrcaStore,
-  token: string | null | undefined
-): Promise<AccountRecord | null> {
-  if (!token) return null;
-  const session = await store.getSession(token);
-  if (session) return store.getAccountById(session.accountId);
-  if (isProductionRuntime()) return null;
-
-  const payload = verifySessionToken(token);
-  if (!payload) return null;
-  if (new Date(payload.expiresAt) < new Date()) return null;
-  return store.upsertAccount({ id: payload.accountId, email: payload.email });
-}
-
-export function base64Url(input: Buffer): string {
-  return input
-    .toString("base64")
-    .replaceAll("+", "-")
-    .replaceAll("/", "_")
-    .replaceAll("=", "");
-}
-
-type SessionTokenPayload = {
-  accountId: string;
-  email: string;
-  expiresAt: string;
-  nonce: string;
-};
-
-function authSecret(): string {
-  const secret = process.env.ORCA_AUTH_SECRET;
-  if (secret) return secret;
-  if (isProductionRuntime()) {
-    throw new Error("ORCA_AUTH_SECRET is required in production");
-  }
-  return "local-development-auth-secret";
-}
-
-function encodeJson(value: unknown): string {
-  return base64Url(Buffer.from(JSON.stringify(value)));
-}
-
-function decodeJson<T>(value: string): T {
-  const normalized = value.replaceAll("-", "+").replaceAll("_", "/");
-  const padded = normalized.padEnd(
-    normalized.length + ((4 - (normalized.length % 4)) % 4),
-    "="
-  );
-  return JSON.parse(Buffer.from(padded, "base64").toString("utf8")) as T;
-}
-
-function signatureFor(body: string): string {
-  return base64Url(createHmac("sha256", authSecret()).update(body).digest());
-}
-
-function signSessionToken(payload: SessionTokenPayload): string {
-  const body = encodeJson(payload);
-  return `${body}.${signatureFor(body)}`;
-}
-
-function verifySessionToken(token: string): SessionTokenPayload | null {
-  const [body, signature] = token.split(".");
-  if (!body || !signature) return null;
-  const expected = signatureFor(body);
-  const actualBuffer = Buffer.from(signature);
-  const expectedBuffer = Buffer.from(expected);
-  if (
-    actualBuffer.length !== expectedBuffer.length ||
-    !timingSafeEqual(actualBuffer, expectedBuffer)
-  ) {
-    return null;
-  }
+export async function getClerkUserId(): Promise<string | null> {
   try {
-    return decodeJson<SessionTokenPayload>(body);
-  } catch {
+    const result = await auth();
+    return result.userId;
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.message.includes("cannot be imported from a Client Component")
+    ) {
+      return null;
+    }
+    if (isProductionRuntime()) throw error;
     return null;
   }
+}
+
+async function clerkPrimaryEmail(): Promise<string | null> {
+  const user = await currentUser();
+  const email =
+    user?.primaryEmailAddress?.emailAddress ??
+    user?.emailAddresses.find((candidate) => candidate.emailAddress)?.emailAddress;
+  return email ? normalizeEmail(email) : null;
+}
+
+export async function getAccountFromClerk(
+  store: OrcaStore
+): Promise<AccountRecord | null> {
+  const userId = await getClerkUserId();
+  if (!userId) return null;
+
+  const existing = await store.getAccountByClerkUserId(userId);
+  if (existing) return existing;
+
+  const email = await clerkPrimaryEmail();
+  if (!email) return null;
+  return store.upsertAccount({ clerkUserId: userId, email });
+}
+
+export async function requireAccountFromClerk(store: OrcaStore): Promise<AccountRecord> {
+  const account = await getAccountFromClerk(store);
+  if (!account) throw new Error("Clerk authentication required");
+  return account;
+}
+
+export function createRawApiKey() {
+  const id = `oak_${randomUUID()}`;
+  const secret = randomBytes(32).toString("base64url");
+  const rawKey = `orca_key_${id}_${secret}`;
+  return {
+    id,
+    rawKey,
+    keyHash: hashApiKey(rawKey),
+    keyPrefix: `orca_key_${id.slice(0, 8)}`,
+    keyLast4: rawKey.slice(-4),
+  };
+}
+
+export async function createAccountApiKey(
+  store: OrcaStore,
+  accountId: string,
+  name: string,
+  scopes: ApiKeyScope[] = [...API_KEY_SCOPES]
+) {
+  const generated = createRawApiKey();
+  const record = await store.createApiKey({
+    id: generated.id,
+    accountId,
+    name: name.trim() || "Orca license key",
+    keyHash: generated.keyHash,
+    keyPrefix: generated.keyPrefix,
+    keyLast4: generated.keyLast4,
+    scopes,
+  });
+  return { record, rawKey: generated.rawKey };
+}
+
+export async function getAccountFromApiKey(
+  store: OrcaStore,
+  request: NextRequest,
+  requiredScope: ApiKeyScope
+): Promise<{ account: AccountRecord; apiKey: AccountApiKeyRecord } | null> {
+  const rawKey = parseBearerToken(request);
+  if (!rawKey) return null;
+  const parsed = parseApiKey(rawKey);
+  if (!parsed) return null;
+  const apiKey = await store.getActiveApiKeyByHash(parsed.id, parsed.hash);
+  if (!apiKey || !apiKey.scopes.includes(requiredScope)) return null;
+  const account = await store.getAccountById(apiKey.accountId);
+  return account ? { account, apiKey } : null;
+}
+
+export async function getAccountForLicenseRequest(
+  store: OrcaStore,
+  request: NextRequest,
+  requiredScope: ApiKeyScope
+): Promise<AccountRecord | null> {
+  const apiKeyAccount = await getAccountFromApiKey(store, request, requiredScope);
+  if (apiKeyAccount) return apiKeyAccount.account;
+  return getAccountFromClerk(store);
 }

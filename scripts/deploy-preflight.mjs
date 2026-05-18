@@ -4,8 +4,7 @@ import { createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
 
 const requiredTables = [
   "accounts",
-  "account_sessions",
-  "account_login_tokens",
+  "account_api_keys",
   "customers",
   "subscriptions",
   "licenses",
@@ -13,13 +12,17 @@ const requiredTables = [
 ];
 
 const requiredColumns = {
-  accounts: ["id", "email", "created_at", "updated_at"],
-  account_sessions: ["token", "account_id", "expires_at", "created_at"],
-  account_login_tokens: [
-    "token_hash",
+  accounts: ["id", "clerk_user_id", "email", "created_at", "updated_at"],
+  account_api_keys: [
+    "id",
     "account_id",
-    "expires_at",
-    "consumed_at",
+    "name",
+    "key_hash",
+    "key_prefix",
+    "key_last4",
+    "scopes",
+    "last_used_at",
+    "revoked_at",
     "created_at",
   ],
   customers: [
@@ -111,17 +114,12 @@ const teamPriceId = requireEnv(
   (value) => presentSecret(value) && value?.startsWith("price_")
 );
 requireEnv(
-  "ORCA_AUTH_SECRET",
-  (value) => presentSecret(value) && Boolean(value && value.length >= 32)
+  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
+  (value) => presentSecret(value) && value?.startsWith("pk_")
 );
-requireEnv("RESEND_API_KEY", (value) => presentSecret(value) && value?.startsWith("re_"));
 requireEnv(
-  "ORCA_EMAIL_FROM",
-  (value) => presentSecret(value) && Boolean(value?.includes("@"))
-);
-const preflightEmailTo = requireEnv(
-  "ORCA_PREFLIGHT_EMAIL_TO",
-  (value) => presentSecret(value) && Boolean(value?.includes("@"))
+  "CLERK_SECRET_KEY",
+  (value) => presentSecret(value) && value?.startsWith("sk_")
 );
 const privateKeyPem = requireEnv("ORCA_LICENSE_PRIVATE_KEY_PEM", hasPem("PRIVATE"));
 const publicKeyPem = requireEnv("ORCA_LICENSE_PUBLIC_KEY_PEM", hasPem("PUBLIC"));
@@ -229,32 +227,6 @@ if (stripeSecret && proPriceId && teamPriceId) {
     }
   } catch (error) {
     fail(`Stripe webhook endpoint check failed: ${error instanceof Error ? error.message : String(error)}`);
-  }
-}
-
-const resendApiKey = process.env.RESEND_API_KEY;
-const resendFrom = process.env.ORCA_EMAIL_FROM;
-if (resendApiKey && resendFrom && preflightEmailTo) {
-  try {
-    const response = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${resendApiKey}`,
-        "content-type": "application/json",
-        "user-agent": "orca-production-preflight/1.0",
-      },
-      body: JSON.stringify({
-        from: resendFrom,
-        to: preflightEmailTo,
-        subject: "Orca production preflight",
-        text: "This message verifies Orca account-access email delivery for production launch.",
-      }),
-    });
-    if (!response.ok) {
-      fail(`Resend preflight email failed with status ${response.status}`);
-    }
-  } catch (error) {
-    fail(`Resend preflight email failed: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 

@@ -1,27 +1,33 @@
 CREATE TABLE IF NOT EXISTS accounts (
   id TEXT PRIMARY KEY,
+  clerk_user_id TEXT,
   email TEXT NOT NULL UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS account_sessions (
-  token TEXT PRIMARY KEY,
+ALTER TABLE accounts
+  ADD COLUMN IF NOT EXISTS clerk_user_id TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS accounts_clerk_user_id_idx
+  ON accounts(clerk_user_id)
+  WHERE clerk_user_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS account_api_keys (
+  id TEXT PRIMARY KEY,
   account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  expires_at TIMESTAMPTZ NOT NULL,
+  name TEXT NOT NULL,
+  key_hash TEXT NOT NULL UNIQUE,
+  key_prefix TEXT NOT NULL,
+  key_last4 TEXT NOT NULL,
+  scopes JSONB NOT NULL,
+  last_used_at TIMESTAMPTZ,
+  revoked_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS account_login_tokens (
-  token_hash TEXT PRIMARY KEY,
-  account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
-  expires_at TIMESTAMPTZ NOT NULL,
-  consumed_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
-CREATE INDEX IF NOT EXISTS account_login_tokens_account_created_idx
-  ON account_login_tokens(account_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS account_api_keys_account_created_idx
+  ON account_api_keys(account_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS customers (
   id TEXT PRIMARY KEY,

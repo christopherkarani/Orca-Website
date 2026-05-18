@@ -7,6 +7,11 @@ const stripeMocks = vi.hoisted(() => ({
   checkoutCreate: vi.fn(),
 }));
 
+const clerkMocks = vi.hoisted(() => ({
+  auth: vi.fn(),
+  currentUser: vi.fn(),
+}));
+
 vi.mock("stripe", () => ({
   default: class StripeMock {
     checkout = {
@@ -15,6 +20,11 @@ vi.mock("stripe", () => ({
       },
     };
   },
+}));
+
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: clerkMocks.auth,
+  currentUser: clerkMocks.currentUser,
 }));
 
 describe("POST /api/checkout", () => {
@@ -26,6 +36,11 @@ describe("POST /api/checkout", () => {
     process.env.STRIPE_TEAM_PRICE_ID = "price_team";
     process.env.ORCA_SITE_URL = "https://orca-tx.com";
     stripeMocks.checkoutCreate.mockReset();
+    clerkMocks.auth.mockResolvedValue({ userId: "user_checkout" });
+    clerkMocks.currentUser.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "team@example.com" },
+      emailAddresses: [],
+    });
     setStoreForTests(createMemoryStore());
   });
 
@@ -48,7 +63,6 @@ describe("POST /api/checkout", () => {
         headers: { origin: "http://localhost" },
         body: new URLSearchParams({
           tier: "team",
-          email: "Team@Example.com",
           seatCount: "7",
         }),
       })
@@ -56,7 +70,8 @@ describe("POST /api/checkout", () => {
 
     expect(response.status).toBe(303);
     expect(response.headers.get("location")).toBe("https://checkout.stripe.com/c/pay/cs_test");
-    await expect(store.getAccountByEmail("team@example.com")).resolves.toBeNull();
+    const account = await store.getAccountByClerkUserId("user_checkout");
+    expect(account?.email).toBe("team@example.com");
     expect(stripeMocks.checkoutCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         mode: "subscription",
@@ -66,14 +81,14 @@ describe("POST /api/checkout", () => {
           "https://orca-tx.com/api/auth/checkout-session?session_id={CHECKOUT_SESSION_ID}",
         cancel_url: "https://orca-tx.com/pricing?checkout=cancelled",
         metadata: expect.objectContaining({
-          accountId: expect.stringMatching(/^acct_/),
+          accountId: account?.id,
           tier: "team",
           seatCount: "7",
         }),
         subscription_data: {
           metadata: expect.objectContaining({
-            accountId: expect.stringMatching(/^acct_/),
-            email: "team@example.com",
+            accountId: account?.id,
+            email: account?.email,
             tier: "team",
             seatCount: "7",
           }),
@@ -91,7 +106,6 @@ describe("POST /api/checkout", () => {
         headers: { origin: "http://localhost" },
         body: new URLSearchParams({
           tier: "free",
-          email: "not-an-email",
         }),
       })
     );
@@ -113,7 +127,6 @@ describe("POST /api/checkout", () => {
         headers: { origin: "http://localhost" },
         body: new URLSearchParams({
           tier: "team",
-          email: "large-team@example.com",
           seatCount: "9999",
         }),
       })
@@ -139,7 +152,6 @@ describe("POST /api/checkout", () => {
         headers: { origin: "https://attacker.example" },
         body: new URLSearchParams({
           tier: "pro",
-          email: "buyer@example.com",
         }),
       })
     );
@@ -161,7 +173,6 @@ describe("POST /api/checkout", () => {
         },
         body: new URLSearchParams({
           tier: "pro",
-          email: "buyer@example.com",
         }),
       })
     );
@@ -180,7 +191,6 @@ describe("POST /api/checkout", () => {
         headers: { origin: "http://localhost" },
         body: new URLSearchParams({
           tier: "pro",
-          email: "buyer@example.com",
         }),
       })
     );

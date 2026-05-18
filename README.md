@@ -31,10 +31,10 @@ only placeholders.
 Required for paid flows:
 
 - `DATABASE_URL`: Postgres connection string.
-- `ORCA_AUTH_SECRET`: random 32+ byte secret for signed account sessions.
-- `RESEND_API_KEY`: server-only key used to send one-time account access links.
-- `ORCA_EMAIL_FROM`: verified sender for account access emails.
-- `ORCA_PREFLIGHT_EMAIL_TO`: monitored inbox that receives production preflight email checks.
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`: Clerk publishable key for GitHub/email sign-in.
+- `CLERK_SECRET_KEY`: Clerk server key for route and server component auth.
+- `NEXT_PUBLIC_CLERK_SIGN_IN_URL`: `/sign-in`.
+- `NEXT_PUBLIC_CLERK_SIGN_UP_URL`: `/sign-up`.
 - `STRIPE_SECRET_KEY`: Stripe secret key. Never expose this client-side.
 - `STRIPE_WEBHOOK_SECRET`: Stripe webhook signing secret.
 - `STRIPE_PRO_PRICE_ID`: recurring Stripe Price for Orca Pro.
@@ -58,26 +58,22 @@ ORCA_WEBHOOK_URL=http://localhost:3000/api/stripe/webhook npm run webhook:fixtur
 local-only file permissions instead of printing the private key to stdout. That
 file is ignored by git.
 
-Direct email login is development-only. Production account access is created from
-a verified Stripe Checkout Session redirect or a one-time email link sent to an
-existing customer account.
-Email links open a confirmation page first and consume the token only on
-same-origin POST, which prevents common email-link prefetchers from burning the
-login token.
-Production sessions must exist in the account session table; a signed cookie alone is not enough in production. Session cookies are stored as SHA-256 hashes server-side.
+Clerk owns production human authentication, including GitHub social login,
+email login, session security, and account recovery. Orca stores only
+commercial records and hashed license automation API keys.
 Browser-facing POST routes reject cross-site `Origin` headers; Stripe webhooks use Stripe signature verification instead.
 
 ## Commercial Flow
 
 1. Visitor chooses Pro or Team on `/pricing`.
-2. `/api/checkout` creates a Stripe subscription Checkout Session.
-3. Stripe redirects the customer back through `/api/auth/checkout-session`.
-4. `/api/auth/checkout-session` verifies the paid Checkout Session, creates or links the account, and creates the account session.
-5. `/api/stripe/webhook` verifies the Stripe signature and idempotently records events.
-6. Checkout/subscription webhooks create or link the account/customer/subscription.
-7. The backend signs an offline Orca license key.
-8. The customer views, copies, downloads, or rotates the license on `/account`.
-9. Returning customers request a one-time account link from `/account` if their browser session is gone.
+2. The visitor signs in with Clerk.
+3. `/api/checkout` creates a Stripe subscription Checkout Session for the Clerk-linked account.
+4. Stripe redirects the customer back through `/api/auth/checkout-session`.
+5. `/api/auth/checkout-session` verifies the paid Checkout Session for the signed-in Clerk user.
+6. `/api/stripe/webhook` verifies the Stripe signature and idempotently records events.
+7. Checkout/subscription webhooks create or link the account/customer/subscription.
+8. The backend signs an offline Orca license key.
+9. The customer views, copies, downloads, rotates the license, or creates license API keys on `/account`.
 10. The local CLI activates with:
 
 ```bash

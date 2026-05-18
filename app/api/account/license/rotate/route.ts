@@ -1,19 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAccountFromRequest, getSessionTokenFromRequest } from "@/lib/server/auth";
+import { getAccountForLicenseRequest, getClerkUserId } from "@/lib/server/auth";
 import { getStore } from "@/lib/server/db";
 import { getLicenseSigningConfig } from "@/lib/server/env";
 import { rejectInvalidOrigin } from "@/lib/server/request-security";
 
 export async function POST(request: NextRequest) {
-  const invalidOrigin = rejectInvalidOrigin(request);
-  if (invalidOrigin) return invalidOrigin;
-
-  if (!getSessionTokenFromRequest(request)) {
-    return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+  const hasBearer = request.headers.get("authorization")?.startsWith("Bearer ");
+  if (!hasBearer) {
+    const invalidOrigin = rejectInvalidOrigin(request);
+    if (invalidOrigin) return invalidOrigin;
+    if (!(await getClerkUserId())) {
+      return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
+    }
   }
 
   const store = getStore();
-  const account = await getAccountFromRequest(store, request);
+  const account = await getAccountForLicenseRequest(store, request, "license:rotate");
   if (!account) {
     return NextResponse.json({ error: "Unauthenticated" }, { status: 401 });
   }

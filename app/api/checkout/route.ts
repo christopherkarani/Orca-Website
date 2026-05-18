@@ -1,6 +1,7 @@
-import { randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
+import { getAccountFromClerk, getClerkUserId } from "@/lib/server/auth";
+import { getStore } from "@/lib/server/db";
 import { getBaseUrl, getStripeConfig, requireStripeSecret } from "@/lib/server/env";
 import { rejectInvalidOrigin } from "@/lib/server/request-security";
 import type { OrcaTier } from "@/lib/billing/entitlements";
@@ -30,10 +31,18 @@ export async function POST(request: NextRequest) {
 
   const formData = await request.formData();
   const tier = validPaidTier(formData.get("tier"));
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const seatCount = normalizeSeatCount(formData.get("seatCount"));
-  if (!tier || !email || !email.includes("@")) {
+  if (!tier) {
     return NextResponse.redirect(new URL("/pricing?error=checkout", request.url), 303);
+  }
+
+  if (!(await getClerkUserId())) {
+    return NextResponse.redirect(new URL("/sign-in?redirect_url=/pricing", request.url), 303);
+  }
+  const store = getStore();
+  const account = await getAccountFromClerk(store);
+  if (!account) {
+    return NextResponse.redirect(new URL("/sign-in?redirect_url=/pricing", request.url), 303);
   }
 
   const stripeConfig = getStripeConfig();
@@ -42,26 +51,25 @@ export async function POST(request: NextRequest) {
     return checkoutError(request, "checkout_config", 500);
   }
 
-  const accountId = `acct_${randomUUID()}`;
   let session: Stripe.Checkout.Session;
   try {
     const stripe = new Stripe(requireStripeSecret());
     const baseUrl = getBaseUrl();
     session = await stripe.checkout.sessions.create({
       mode: "subscription",
-      customer_email: email,
+      customer_email: account.email,
       line_items: [{ price, quantity: tier === "team" ? seatCount : 1 }],
       success_url: `${baseUrl}/api/auth/checkout-session?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing?checkout=cancelled`,
       metadata: {
-        accountId,
+        accountId: account.id,
         tier,
         seatCount: String(tier === "team" ? seatCount : 1),
       },
       subscription_data: {
         metadata: {
-          accountId,
-          email,
+          accountId: account.id,
+          email: account.email,
           tier,
           seatCount: String(tier === "team" ? seatCount : 1),
         },

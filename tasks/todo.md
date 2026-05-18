@@ -189,14 +189,13 @@ Prompt-to-artifact checklist:
 - Account dashboard and license APIs: implemented in `app/account/*`, `app/api/account/license/route.ts`, and `app/api/account/license/rotate/route.ts`; tests cover dashboard rendering, unauthenticated account-page rendering without database access, unauthenticated API rejection, authenticated license fetch, JSON rotation, and browser-form rotation redirect.
 - Stripe Customer Portal: implemented in `app/api/billing/portal/route.ts`; route tests cover unauthenticated redirect, authenticated portal session creation, cross-site rejection, Stripe failure redirect, and missing-URL redirect; deploy preflight verifies an active Stripe Customer Portal configuration.
 - Activation docs: `/docs#activation`, `docs/license-contract.md`, README, and pricing/account UI document `orca license activate <key>`.
-- Security requirements: secrets only read from server env; private key and Stripe secrets are not exposed client-side; webhooks verify signatures; production DB/auth/signing config fails closed; preflight and health checks verify live Stripe keys/prices, webhook endpoint/events, schema, auth secret, and matching Ed25519 license key pair as applicable.
-- Browser request security: `lib/server/request-security.ts` rejects cross-site `Origin` headers for Checkout, dev login, billing portal, and license rotation routes; tests cover same-origin, cross-origin, and missing-Origin production behavior.
+- Security requirements: secrets only read from server env; private key and Stripe secrets are not exposed client-side; webhooks verify signatures; production DB/auth/signing config fails closed; preflight and health checks verify Clerk keys, live Stripe keys/prices, webhook endpoint/events, schema, and matching Ed25519 license key pair as applicable.
+- Browser request security: `lib/server/request-security.ts` rejects cross-site `Origin` headers for Checkout, API-key management, billing portal, and cookie-authenticated license rotation routes; tests cover same-origin, cross-origin, and missing-Origin production behavior.
 - Response security headers: `next.config.ts` applies frame denial, nosniff, strict referrer policy, cross-origin opener isolation, restricted browser permissions, and HSTS across all routes.
 - Sensitive response caching: `app/account/page.tsx` explicitly calls `noStore()` with forced dynamic/no-store route config and `next.config.ts`/`proxy.ts` set no-store on account/API surfaces; locally verified production `next start` account/API no-store headers and security headers.
 - CI/deploy verification: `.github/workflows/production-readiness.yml` runs install, tests, typecheck, lint, build, audit, and fail-closed production preflight.
-- Environment docs: `.env.example` covers local/test values and `.env.production.example` covers production-shaped placeholders without real secrets, including Resend account-link email configuration.
-- Local runtime verification: dev server on `http://localhost:3001`; `GET /pricing 200`, `GET /account 200`, `POST /api/auth/request-login 200`, `GET /api/auth/magic?... 200` rendered the confirmation form, and `POST /api/auth/magic 303` created an `orca_session` cookie; in-app browser verification was attempted but blocked by a missing Electron binary.
-- External launch gate: not complete locally because real production env, Postgres, Resend sender/API key, live Stripe prices, live Stripe webhook endpoint, Customer Portal, and signing secrets are not provisioned in this workspace. `npm run preflight:prod` correctly fails closed until those are configured.
+- Environment docs: `.env.example` covers local/test values and `.env.production.example` covers production-shaped placeholders without real secrets, including Clerk, Stripe, Postgres, and license signing configuration.
+- External launch gate: not complete locally because real production env, Postgres, Clerk keys/provider setup, live Stripe prices, live Stripe webhook endpoint, Customer Portal, and signing secrets are not provisioned in this workspace. `npm run preflight:prod` correctly fails closed until those are configured.
 
 ## Production Readiness Status
 
@@ -208,12 +207,21 @@ As of the latest verification pass, the repo-owned commercial foundation is gree
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRO_PRICE_ID`
 - `STRIPE_TEAM_PRICE_ID`
-- `ORCA_AUTH_SECRET`
-- `RESEND_API_KEY`
-- `ORCA_EMAIL_FROM`
-- `ORCA_PREFLIGHT_EMAIL_TO`
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+- `CLERK_SECRET_KEY`
 - `ORCA_LICENSE_PRIVATE_KEY_PEM`
 - `ORCA_LICENSE_PUBLIC_KEY_PEM`
 - `ORCA_LICENSE_KEY_VERSION`
 
-No additional repo-owned implementation blocker is currently known. The remaining work is production provisioning: apply `db/schema.sql` to the production Postgres database, create live Stripe Pro/Team recurring prices, enable Stripe Customer Portal, create the live webhook endpoint for `/api/stripe/webhook` with all required events, configure Resend sender/API credentials, generate and store the Ed25519 license signing key pair, embed the public key in the separate Orca CLI repo, and rerun `npm run preflight:prod` in the deploy environment until it passes.
+No additional repo-owned implementation blocker is currently known. The remaining work is production provisioning: apply `db/schema.sql` to the production Postgres database, configure Clerk with GitHub/email sign-in and deployment keys, create live Stripe Pro/Team recurring prices, enable Stripe Customer Portal, create the live webhook endpoint for `/api/stripe/webhook` with all required events, generate and store the Ed25519 license signing key pair, embed the public key in the separate Orca CLI repo, and rerun `npm run preflight:prod` in the deploy environment until it passes.
+
+## Clerk Auth Migration
+
+- Replaced the custom website auth layer with Clerk for production human login, including GitHub/email provider support through Clerk-managed sign-in and sign-up pages.
+- Removed direct email login, one-time magic links, Resend delivery, custom session cookies, account login tokens, and the related production preflight requirements.
+- Added `clerk_user_id` to accounts so Stripe customers, subscriptions, and signed licenses remain Orca-owned while Clerk owns browser identity and recovery.
+- Added hashed account API keys scoped to license automation only. API keys can fetch license data, rotate a license, and inspect plan state; they cannot manage billing or replace Clerk dashboard login.
+- Added account dashboard API-key management, plus `/api/account/api-keys`, `/api/account/api-keys/[keyId]`, and `/api/account/plan`.
+- Updated docs, env examples, deployment preflight, readiness checks, and setup scripts to require Clerk keys instead of Resend or `ORCA_AUTH_SECRET`.
+- Verification after the migration passed: `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit`, `git diff --check`, and repo secret-pattern scan.
+- `npm run preflight:prod` still fails closed locally because real production env/services are not configured: site URL, Postgres, live Stripe, Clerk keys, and license signing keys.

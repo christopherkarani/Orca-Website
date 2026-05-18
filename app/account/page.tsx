@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
+import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { unstable_noStore as noStore } from "next/cache";
-import { cookies } from "next/headers";
 import { AccountDashboard } from "./AccountDashboard";
 import { Footer } from "../_components/Footer";
 import { Nav } from "../_components/Nav";
-import { SESSION_COOKIE, getAccountFromSessionToken } from "@/lib/server/auth";
+import { getAccountFromClerk, getClerkUserId } from "@/lib/server/auth";
 import { getStore } from "@/lib/server/db";
-import { getLicenseSigningConfig, isProductionRuntime } from "@/lib/server/env";
+import { getLicenseSigningConfig } from "@/lib/server/env";
 
 export const metadata: Metadata = {
   title: "Account - Orca",
@@ -17,27 +17,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
-function firstParam(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
-function LoginPanel({
-  login,
-  error,
-}: {
-  login?: string;
-  error?: string;
-}) {
-  const devLoginEnabled = !isProductionRuntime();
-  const message =
-    login === "requested"
-      ? "If that email belongs to an Orca account, a one-time access link is on the way."
-      : error === "login_link"
-        ? "That account link is expired or already used. Request a new one."
-        : error === "login_email"
-          ? "Orca could not send the account link. Try again in a minute."
-          : undefined;
-
+function LoginPanel() {
   return (
     <section className="mx-auto max-w-xl border border-neutral-200 bg-white p-6">
       <p className="font-mono text-xs tracking-[0.2em] text-neutral-400 mb-4">
@@ -45,76 +25,39 @@ function LoginPanel({
       </p>
       <h1 className="text-3xl font-semibold tracking-tight">View your Orca license</h1>
       <p className="mt-3 text-sm text-neutral-500 leading-relaxed">
-        Buy Pro or Team from the pricing page. After Stripe Checkout, Orca opens this
-        dashboard with a verified account session. Returning customers can request a
-        one-time account link.
+        Sign in with GitHub or email through Clerk. Orca stores billing and license
+        records, but Clerk handles human account security and recovery.
       </p>
-      {message && (
-        <p className="mt-4 border border-neutral-200 bg-neutral-50 px-3 py-2 text-sm text-neutral-600">
-          {message}
-        </p>
-      )}
-      {devLoginEnabled ? (
-        <form action="/api/auth/login" method="post" className="mt-6 space-y-4">
-          <label className="block text-xs font-medium text-neutral-500">
-            Development email login
-            <input
-              required
-              type="email"
-              name="email"
-              placeholder="you@company.com"
-              className="mt-2 w-full border border-neutral-300 px-3 py-2 text-sm text-neutral-950 outline-none focus:border-neutral-950"
-            />
-          </label>
-          <button type="submit" className="w-full bg-black px-5 py-3 text-sm font-medium text-white">
-            Continue
+      <div className="mt-6 flex flex-wrap gap-3">
+        <SignInButton mode="modal">
+          <button className="bg-black px-5 py-3 text-sm font-medium text-white">
+            Sign in
           </button>
-        </form>
-      ) : (
-        <div className="mt-6 space-y-4">
-          <form action="/api/auth/request-login" method="post" className="space-y-4">
-            <label className="block text-xs font-medium text-neutral-500">
-              Account email
-              <input
-                required
-                type="email"
-                name="email"
-                placeholder="you@company.com"
-                className="mt-2 w-full border border-neutral-300 px-3 py-2 text-sm text-neutral-950 outline-none focus:border-neutral-950"
-              />
-            </label>
-            <button type="submit" className="w-full bg-black px-5 py-3 text-sm font-medium text-white">
-              Send account link
-            </button>
-          </form>
-          <a
-            href="/pricing"
-            className="inline-flex w-full items-center justify-center border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950"
-          >
-            Choose a plan
-          </a>
-        </div>
-      )}
+        </SignInButton>
+        <SignUpButton mode="modal">
+          <button className="border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950">
+            Create account
+          </button>
+        </SignUpButton>
+        <a
+          href="/pricing"
+          className="inline-flex items-center justify-center border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950"
+        >
+          Choose a plan
+        </a>
+      </div>
     </section>
   );
 }
 
-export default async function AccountPage({
-  searchParams,
-}: {
-  searchParams?: Promise<Record<string, string | string[] | undefined>>;
-}) {
+export default async function AccountPage() {
   noStore();
-  const params = searchParams ? await searchParams : {};
-  const cookieStore = await cookies();
-  const sessionToken = cookieStore.get(SESSION_COOKIE)?.value;
+  const clerkUserId = await getClerkUserId();
 
-  let content: React.ReactNode = (
-    <LoginPanel login={firstParam(params.login)} error={firstParam(params.error)} />
-  );
-  if (sessionToken) {
+  let content: React.ReactNode = <LoginPanel />;
+  if (clerkUserId) {
     const store = getStore();
-    const account = await getAccountFromSessionToken(store, sessionToken);
+    const account = await getAccountFromClerk(store);
     if (account) {
       let license = await store.getCurrentLicenseForAccount(account.id);
       if (!license) {
@@ -124,14 +67,21 @@ export default async function AccountPage({
           keyVersion: signing.keyVersion,
         });
       }
+      const apiKeys = await store.listApiKeys(account.id);
       content = (
-        <AccountDashboard
-          email={account.email}
-          plan={license.tier}
-          seatCount={license.seatCount}
-          licenseKey={license.licenseKey}
-          renewsAt={license.renewsAt}
-        />
+        <div className="space-y-6">
+          <div className="flex justify-end">
+            <UserButton />
+          </div>
+          <AccountDashboard
+            email={account.email}
+            plan={license.tier}
+            seatCount={license.seatCount}
+            licenseKey={license.licenseKey}
+            renewsAt={license.renewsAt}
+            apiKeys={apiKeys}
+          />
+        </div>
       );
     }
   }

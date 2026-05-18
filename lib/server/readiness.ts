@@ -17,10 +17,6 @@ function present(value: string | undefined): boolean {
   );
 }
 
-function presentEmail(value: string | undefined): boolean {
-  return present(value) && Boolean(value?.includes("@"));
-}
-
 function hasPem(value: string | undefined, label: "PRIVATE" | "PUBLIC"): boolean {
   return Boolean(value?.replaceAll("\\n", "\n").includes(`-----BEGIN ${label} KEY-----`));
 }
@@ -57,24 +53,16 @@ export function assessProductionReadiness(
       message: "ORCA_SITE_URL must be the production https:// URL.",
     },
     {
-      name: "auth_secret",
-      ok: present(env.ORCA_AUTH_SECRET) && env.ORCA_AUTH_SECRET!.length >= 32,
-      message: "ORCA_AUTH_SECRET must be a random 32+ byte secret.",
+      name: "clerk_publishable_key",
+      ok:
+        present(env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) &&
+        env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY!.startsWith("pk_"),
+      message: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY must be configured for Clerk.",
     },
     {
-      name: "email_api_key",
-      ok: present(env.RESEND_API_KEY) && env.RESEND_API_KEY!.startsWith("re_"),
-      message: "RESEND_API_KEY must be configured for one-time account access emails.",
-    },
-    {
-      name: "email_from",
-      ok: presentEmail(env.ORCA_EMAIL_FROM),
-      message: "ORCA_EMAIL_FROM must be a verified sender for account access emails.",
-    },
-    {
-      name: "preflight_email_to",
-      ok: presentEmail(env.ORCA_PREFLIGHT_EMAIL_TO),
-      message: "ORCA_PREFLIGHT_EMAIL_TO must receive production preflight email checks.",
+      name: "clerk_secret_key",
+      ok: present(env.CLERK_SECRET_KEY) && env.CLERK_SECRET_KEY!.startsWith("sk_"),
+      message: "CLERK_SECRET_KEY must be configured for Clerk server auth.",
     },
     {
       name: "database_url",

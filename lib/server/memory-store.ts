@@ -6,18 +6,16 @@ import {
 import { createSignedLicense } from "@/lib/license/contract";
 import type {
   AccountRecord,
+  AccountApiKeyRecord,
   CustomerRecord,
   IssueLicenseOptions,
-  LoginTokenRecord,
   LicenseRecord,
   OrcaStore,
-  SessionRecord,
   SubscriptionRecord,
   UpsertAccountInput,
   UpsertSubscriptionInput,
   WebhookEventStatus,
 } from "./store";
-import { sessionStorageKey } from "./session-token";
 
 export type MemoryStore = OrcaStore & {
   testPrivateKeyPem: string;
@@ -43,11 +41,11 @@ export function createMemoryStore(): MemoryStore {
   });
   const accounts = new Map<string, AccountRecord>();
   const accountsByEmail = new Map<string, string>();
+  const accountsByClerkUserId = new Map<string, string>();
   const customersByStripeId = new Map<string, CustomerRecord>();
   const subscriptionsByStripeId = new Map<string, SubscriptionRecord>();
   const licensesByAccountId = new Map<string, LicenseRecord>();
-  const sessions = new Map<string, SessionRecord>();
-  const loginTokens = new Map<string, LoginTokenRecord>();
+  const apiKeysById = new Map<string, AccountApiKeyRecord & { keyHash: string }>();
   const webhookEvents = new Map<string, WebhookEventStatus>();
 
   const store: MemoryStore = {
@@ -56,23 +54,31 @@ export function createMemoryStore(): MemoryStore {
 
     async upsertAccount(input: UpsertAccountInput) {
       const email = normalizeEmail(input.email);
-      const existingId = accountsByEmail.get(email);
+      const existingId =
+        (input.clerkUserId ? accountsByClerkUserId.get(input.clerkUserId) : undefined) ??
+        accountsByEmail.get(email);
       if (existingId) {
         const existing = accounts.get(existingId);
         if (!existing) throw new Error("Account index is corrupt");
+        existing.email = email;
+        existing.clerkUserId = input.clerkUserId ?? existing.clerkUserId;
         existing.updatedAt = nowIso();
+        accountsByEmail.set(email, existing.id);
+        if (existing.clerkUserId) accountsByClerkUserId.set(existing.clerkUserId, existing.id);
         return existing;
       }
 
       const id = input.id ?? `acct_${randomUUID()}`;
       const account: AccountRecord = {
         id,
+        clerkUserId: input.clerkUserId,
         email,
         createdAt: nowIso(),
         updatedAt: nowIso(),
       };
       accounts.set(id, account);
       accountsByEmail.set(email, id);
+      if (input.clerkUserId) accountsByClerkUserId.set(input.clerkUserId, id);
       return account;
     },
 
@@ -82,6 +88,11 @@ export function createMemoryStore(): MemoryStore {
 
     async getAccountByEmail(email: string) {
       const id = accountsByEmail.get(normalizeEmail(email));
+      return id ? accounts.get(id) ?? null : null;
+    },
+
+    async getAccountByClerkUserId(clerkUserId: string) {
+      const id = accountsByClerkUserId.get(clerkUserId);
       return id ? accounts.get(id) ?? null : null;
     },
 
@@ -270,56 +281,39 @@ export function createMemoryStore(): MemoryStore {
       }
     },
 
-    async createSession(accountId: string, token: string, expiresAt: string) {
-      const session: SessionRecord = {
-        token: sessionStorageKey(token),
-        accountId,
-        expiresAt,
+    async createApiKey(input) {
+      const record: AccountApiKeyRecord & { keyHash: string } = {
+        id: input.id,
+        accountId: input.accountId,
+        name: input.name,
+        keyPrefix: input.keyPrefix,
+        keyLast4: input.keyLast4,
+        scopes: input.scopes,
+        keyHash: input.keyHash,
         createdAt: nowIso(),
       };
-      sessions.set(session.token, session);
-      return session;
-    },
-
-    async getSession(token: string) {
-      const session = sessions.get(sessionStorageKey(token));
-      if (!session || new Date(session.expiresAt) < new Date()) return null;
-      return session;
-    },
-
-    async createLoginToken(accountId: string, token: string, expiresAt: string) {
-      const tokenHash = sessionStorageKey(token);
-      const record: LoginTokenRecord = {
-        tokenHash,
-        accountId,
-        expiresAt,
-        createdAt: nowIso(),
-      };
-      loginTokens.set(tokenHash, record);
+      apiKeysById.set(record.id, record);
       return record;
     },
 
-    async consumeLoginToken(token: string) {
-      const tokenHash = sessionStorageKey(token);
-      const record = loginTokens.get(tokenHash);
-      if (
-        !record ||
-        record.consumedAt ||
-        new Date(record.expiresAt) < new Date()
-      ) {
-        return null;
-      }
-      record.consumedAt = nowIso();
-      return record.accountId;
+    async listApiKeys(accountId: string) {
+      return [...apiKeysById.values()]
+        .filter((key) => key.accountId === accountId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
 
-    async countRecentLoginTokens(accountId: string, since: string) {
-      const sinceTime = new Date(since).getTime();
-      return [...loginTokens.values()].filter(
-        (record) =>
-          record.accountId === accountId &&
-          new Date(record.createdAt).getTime() >= sinceTime
-      ).length;
+    async revokeApiKey(accountId: string, keyId: string) {
+      const key = apiKeysById.get(keyId);
+      if (key?.accountId === accountId && !key.revokedAt) {
+        key.revokedAt = nowIso();
+      }
+    },
+
+    async getActiveApiKeyByHash(keyId: string, keyHash: string) {
+      const key = apiKeysById.get(keyId);
+      if (!key || key.keyHash !== keyHash || key.revokedAt) return null;
+      key.lastUsedAt = nowIso();
+      return key;
     },
   };
 
