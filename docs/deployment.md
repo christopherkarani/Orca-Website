@@ -58,6 +58,7 @@ npm run lint
 npm run build
 npm audit
 npm run preflight:prod
+ORCA_EXPECT_READY=true npm run smoke:prod
 ```
 
 `npm run preflight:prod` verifies required production environment variables, the

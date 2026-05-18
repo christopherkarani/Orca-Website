@@ -12,6 +12,7 @@
     "db:apply": "node scripts/apply-schema.mjs",
     "webhook:fixture": "node scripts/stripe-webhook-fixture.mjs",
     "preflight:prod": "node scripts/deploy-preflight.mjs",
+    "smoke:prod": "node scripts/production-smoke.mjs",
     "lint": "eslint",
     "parity:pixel": "node scripts/pixel-diff.mjs"
   },

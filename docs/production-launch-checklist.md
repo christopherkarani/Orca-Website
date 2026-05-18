@@ -122,14 +122,14 @@ npm run lint
 npm run build
 npm audit
 npm run preflight:prod
+ORCA_EXPECT_READY=true npm run smoke:prod
 ```
 
-Then verify the live deployment:
+Before full provisioning, this live smoke command is useful for checking that
+the deployed site still fails closed cleanly:
 
 ```bash
-curl -i https://orca-tx.com/pricing
-curl -i https://orca-tx.com/account
-curl -i https://orca-tx.com/api/health
+npm run smoke:prod
 ```
 
 Expected after full provisioning:

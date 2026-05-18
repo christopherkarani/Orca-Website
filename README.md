@@ -20,6 +20,7 @@ npm test
 npm run lint
 npm run build
 npm run preflight:prod
+npm run smoke:prod
 ```
 
 ## Environment
