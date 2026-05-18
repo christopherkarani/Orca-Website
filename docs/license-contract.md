@@ -86,6 +86,14 @@ The website also refuses to issue a paid license from a subscription whose
 period end is already in the past at processing time, even if Stripe still
 reports an entitled status in a delayed event.
 
+## Verification Fixture
+
+`docs/license-verification-fixture.json` contains a public key, key version,
+signed Team license key, verification timestamp, and expected payload. It
+contains no private key material. Use it in the Orca CLI repo to confirm the
+local decoder, canonical signing input, Ed25519 verification, expiry check, and
+envelope-signature equality rule match this website.
+
 ## Rotation Semantics
 
 License rotation issues a new signed license for the account. Because Orca

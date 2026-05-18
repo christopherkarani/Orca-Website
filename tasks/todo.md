@@ -245,6 +245,7 @@ No additional repo-owned implementation blocker is currently known. The remainin
 - Redacted detailed `/api/health` readiness checks in production; the route now returns only aggregate ready/blocked state there.
 - Added license `source_event_id` persistence and tests so a Stripe retry after mutation but before webhook completion does not issue a second license for the same event.
 - Added DB integrity constraints for subscription customer linkage, license subscription linkage, API-key scope allowlisting, and source-event uniqueness.
+- Added `docs/license-verification-fixture.json` with a public-key signed license fixture for the separate Orca CLI repo's local verification tests.
 - Added `docs/production-launch-checklist.md` as the single external provisioning runbook for Clerk, Postgres, Stripe, Vercel env, license signing keys, preflight, smoke checks, and do-not-launch gates.
 - Added `npm run smoke:prod` to verify live pricing, account, docs, sign-in/sign-up, production health redaction, no-store account caching, and final ready-state health with `ORCA_EXPECT_READY=true`.
 - Added `npm run vercel:env:check` to verify required Vercel production environment variable names are present without printing secret values.

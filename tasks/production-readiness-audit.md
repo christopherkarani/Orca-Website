@@ -23,7 +23,7 @@ out of scope except for the public-key/license-contract handoff.
 - Stripe webhooks and idempotency: `app/api/stripe/webhook/route.ts`,
   `lib/billing/webhooks.ts`, `webhook_events` in `db/schema.sql`.
 - Signed licenses: `lib/license/contract.ts`, license rows in `db/schema.sql`,
-  `docs/license-contract.md`.
+  `docs/license-contract.md`, `docs/license-verification-fixture.json`.
 - Account dashboard: `app/account/page.tsx`, `app/account/AccountDashboard.tsx`,
   `app/account/ApiKeyManager.tsx`.
 - Production gates: `scripts/deploy-preflight.mjs`,

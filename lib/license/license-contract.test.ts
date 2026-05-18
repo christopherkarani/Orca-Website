@@ -5,6 +5,7 @@ import {
   decodeLicenseKey,
   verifySignedLicense,
 } from "./contract";
+import verificationFixture from "@/docs/license-verification-fixture.json";
 
 const keyPair = generateKeyPairSync("ed25519", {
   privateKeyEncoding: { format: "pem", type: "pkcs8" },
@@ -118,5 +119,21 @@ describe("signed Orca license contract", () => {
         publicKeys: { "test-ed25519-v1": keyPair.publicKey },
       })
     ).toMatchObject({ valid: false, reason: "invalid_format" });
+  });
+
+  it("verifies the static CLI handoff fixture", () => {
+    expect(
+      verifySignedLicense({
+        licenseKey: verificationFixture.licenseKey,
+        publicKeys: {
+          [verificationFixture.keyVersion]: verificationFixture.publicKeyPem,
+        },
+        now: new Date(verificationFixture.verifyAt),
+      })
+    ).toEqual({
+      valid: true,
+      payload: verificationFixture.expectedPayload,
+      keyVersion: verificationFixture.keyVersion,
+    });
   });
 });

@@ -1,0 +1,30 @@
+{
+  "keyVersion": "orca-fixture-ed25519-v1",
+  "algorithm": "Ed25519",
+  "publicKeyPem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAk9+Z5LckDoU6MVlfRbLOeZU3lmn16Sg0jVCSIfJUHyA=\n-----END PUBLIC KEY-----\n",
+  "licenseKey": "orca_eyJ2ZXJzaW9uIjoxLCJhbGdvcml0aG0iOiJFZDI1NTE5Iiwia2V5VmVyc2lvbiI6Im9yY2EtZml4dHVyZS1lZDI1NTE5LXYxIiwicGF5bG9hZCI6eyJsaWNlbnNlSWQiOiJsaWNfZml4dHVyZV8yMDI2XzA1XzE4IiwiY3VzdG9tZXJJZCI6ImN1c19maXh0dXJlXzIwMjZfMDVfMTgiLCJhY2NvdW50SWQiOiJhY2N0X2ZpeHR1cmVfMjAyNl8wNV8xOCIsImVtYWlsIjoiZml4dHVyZUBleGFtcGxlLmNvbSIsInRpZXIiOiJ0ZWFtIiwiaXNzdWVkQXQiOiIyMDI2LTA1LTE4VDAwOjAwOjAwLjAwMFoiLCJyZW5ld3NBdCI6IjIwMjYtMDYtMThUMDA6MDA6MDAuMDAwWiIsImV4cGlyZXNBdCI6IjIwMjYtMDYtMjVUMDA6MDA6MDAuMDAwWiIsInNlYXRDb3VudCI6NSwiZmVhdHVyZXMiOlsiY2xpX2NvcmUiLCJiYXNpY19wb2xpY3kiLCJsb2NhbF9hdWRpdCIsImxvY2FsX2Rhc2hib2FyZCIsInNlc3Npb25fcmVwb3J0cyIsInByb2R1Y3Rpdml0eV9yZXBvcnRzIiwiY2lfZ2F0ZSIsInRlYW1fcG9saWN5X3BhY2tzIiwiYmFzZWxpbmVfZHJpZnRfY2hlY2tzIiwiYXVkaXRfYnVuZGxlcyJdfSwic2lnbmF0dXJlIjoiUHc0MGNDMkV4WFYxWU9YRVlIdVFHOEFYaHhIWEhCakZwZlFZUUlreUZuMVJGRlpuUHhaVDMtYnVwbkJhVXN4V2RSTlpEUmhVU3ktNDF3eHB4Uk9nRFEifQ.Pw40cC2ExXV1YOXEYHuQG8AXhxHXHBjFpfQYQIkyFn1RFFZnPxZT3-bupnBaUsxWdRNZDRhUSy-41wxpxROgDQ",
+  "verifyAt": "2026-05-19T00:00:00.000Z",
+  "expectedPayload": {
+    "licenseId": "lic_fixture_2026_05_18",
+    "customerId": "cus_fixture_2026_05_18",
+    "accountId": "acct_fixture_2026_05_18",
+    "email": "fixture@example.com",
+    "tier": "team",
+    "issuedAt": "2026-05-18T00:00:00.000Z",
+    "renewsAt": "2026-06-18T00:00:00.000Z",
+    "expiresAt": "2026-06-25T00:00:00.000Z",
+    "seatCount": 5,
+    "features": [
+      "cli_core",
+      "basic_policy",
+      "local_audit",
+      "local_dashboard",
+      "session_reports",
+      "productivity_reports",
+      "ci_gate",
+      "team_policy_packs",
+      "baseline_drift_checks",
+      "audit_bundles"
+    ]
+  }
+}
