@@ -248,6 +248,7 @@ No additional repo-owned implementation blocker is currently known. The remainin
 - Added `docs/production-launch-checklist.md` as the single external provisioning runbook for Clerk, Postgres, Stripe, Vercel env, license signing keys, preflight, smoke checks, and do-not-launch gates.
 - Added `npm run smoke:prod` to verify live pricing, account, docs, sign-in/sign-up, production health redaction, no-store account caching, and final ready-state health with `ORCA_EXPECT_READY=true`.
 - Added `npm run vercel:env:check` to verify required Vercel production environment variable names are present without printing secret values.
+- Added regression coverage for `npm run vercel:env:check` so the pass/fail behavior and no-secret-output contract are tested.
 - Added `npm run launch:prod:check` as a single launch gate for clean `main`, current-commit GitHub Actions success, Vercel env names, production preflight, and ready-mode live smoke.
 - Verified `npm run launch:prod:check` currently blocks launch for the expected reasons: missing Vercel production env names, fail-closed preflight, Clerk-not-configured live auth pages, blocked health, and failed GitHub Actions run.
 - Verification after this pass: `npm test` (22 files, 92 tests), `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit`, `git diff --check`, secret-pattern scan, production-build HTTP checks for `/pricing`, `/docs`, `/account`, `/api/health`, and signed webhook fixture lifecycle against local dev server.
