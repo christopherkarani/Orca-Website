@@ -22,6 +22,7 @@ npm run build
 npm run vercel:env:check
 npm run preflight:prod
 npm run smoke:prod
+npm run launch:prod:check
 ```
 
 ## Environment

@@ -124,6 +124,7 @@ npm audit
 npm run vercel:env:check
 npm run preflight:prod
 ORCA_EXPECT_READY=true npm run smoke:prod
+npm run launch:prod:check
 ```
 
 Before full provisioning, this live smoke command is useful for checking that
@@ -151,7 +152,8 @@ Expected after full provisioning:
 
 - `npm run preflight:prod` fails.
 - `npm run vercel:env:check` reports missing production environment names.
-- GitHub Actions cannot run because of account billing lock.
+- GitHub Actions cannot run because of account billing lock, or the latest
+  successful run is not for the commit being launched.
 - Clerk GitHub login has not been tested on `https://orca-tx.com`.
 - Stripe webhook endpoint is missing any required event.
 - The license private key is visible in logs, client bundles, docs, or examples.

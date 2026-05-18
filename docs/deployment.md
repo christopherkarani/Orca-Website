@@ -60,6 +60,7 @@ npm audit
 npm run vercel:env:check
 npm run preflight:prod
 ORCA_EXPECT_READY=true npm run smoke:prod
+npm run launch:prod:check
 ```
 
 `npm run vercel:env:check` verifies that all required production environment
@@ -69,6 +70,9 @@ Postgres schema tables and required account, API-key, billing, license, and
 webhook columns, live recurring Stripe prices, an active Customer Portal
 configuration, an enabled production webhook endpoint with the required events,
 Clerk configuration, and matching license signing key material.
+`npm run launch:prod:check` requires a clean `main` checkout, confirms the
+latest GitHub Actions run passed for the current commit, and runs the Vercel env
+check, production preflight, and ready-mode live smoke test as one launch gate.
 `/api/health` returns only aggregate ready/blocked state in production. Detailed
 readiness checks stay in local development and `npm run preflight:prod`.
 
