@@ -29,6 +29,12 @@ function parseApiKey(rawKey: string): { id: string; hash: string } | null {
 }
 
 export async function getClerkUserId(): Promise<string | null> {
+  if (
+    isProductionRuntime() &&
+    (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || !process.env.CLERK_SECRET_KEY)
+  ) {
+    return null;
+  }
   try {
     const result = await auth();
     return result.userId;
