@@ -45,6 +45,7 @@ export function createMemoryStore(): MemoryStore {
   const customersByStripeId = new Map<string, CustomerRecord>();
   const subscriptionsByStripeId = new Map<string, SubscriptionRecord>();
   const licensesByAccountId = new Map<string, LicenseRecord>();
+  const licensesBySourceEventId = new Map<string, LicenseRecord>();
   const apiKeysById = new Map<string, AccountApiKeyRecord & { keyHash: string }>();
   const webhookEvents = new Map<string, WebhookEventStatus>();
 
@@ -166,6 +167,10 @@ export function createMemoryStore(): MemoryStore {
     },
 
     async issueLicenseForAccount(accountId: string, options: IssueLicenseOptions) {
+      if (options.sourceEventId) {
+        const existing = licensesBySourceEventId.get(options.sourceEventId);
+        if (existing) return existing;
+      }
       const account = accounts.get(accountId);
       if (!account) throw new Error(`Unknown account ${accountId}`);
       const subscription =
@@ -208,6 +213,7 @@ export function createMemoryStore(): MemoryStore {
         accountId,
         customerId,
         subscriptionId: subscription?.id,
+        sourceEventId: options.sourceEventId,
         tier: entitlements.tier,
         status: "active",
         seatCount: entitlements.seatCount,
@@ -221,10 +227,15 @@ export function createMemoryStore(): MemoryStore {
         updatedAt: nowIso(),
       };
       licensesByAccountId.set(accountId, license);
+      if (options.sourceEventId) licensesBySourceEventId.set(options.sourceEventId, license);
       return license;
     },
 
     async revokePaidLicenseForAccount(accountId: string, options: IssueLicenseOptions) {
+      if (options.sourceEventId) {
+        const existing = licensesBySourceEventId.get(options.sourceEventId);
+        if (existing) return existing;
+      }
       const account = accounts.get(accountId);
       if (!account) throw new Error(`Unknown account ${accountId}`);
       const entitlements = getEntitlementsForTier("free", 1);
@@ -247,6 +258,7 @@ export function createMemoryStore(): MemoryStore {
         id: signed.payload.licenseId,
         accountId,
         customerId: signed.payload.customerId,
+        sourceEventId: options.sourceEventId,
         tier: "free",
         status: "revoked",
         seatCount: 1,
@@ -258,6 +270,7 @@ export function createMemoryStore(): MemoryStore {
         updatedAt: nowIso(),
       };
       licensesByAccountId.set(accountId, license);
+      if (options.sourceEventId) licensesBySourceEventId.set(options.sourceEventId, license);
       return license;
     },
 

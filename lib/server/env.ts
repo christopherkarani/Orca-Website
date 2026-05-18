@@ -1,4 +1,10 @@
-import { generateKeyPairSync } from "node:crypto";
+import {
+  createPrivateKey,
+  createPublicKey,
+  generateKeyPairSync,
+  sign,
+  verify,
+} from "node:crypto";
 
 let devKeyPair:
   | {
@@ -15,6 +21,36 @@ function getDevKeyPair() {
     });
   }
   return devKeyPair;
+}
+
+function presentSecret(value: string | undefined): boolean {
+  return Boolean(value?.trim() && !/replace|example|placeholder|test_replace/i.test(value));
+}
+
+function normalizePem(value: string | undefined): string | undefined {
+  return value?.replaceAll("\\n", "\n");
+}
+
+function validateProductionLicenseKeyPair(
+  privateKeyPem: string | undefined,
+  publicKeyPem: string | undefined
+) {
+  if (!privateKeyPem || !publicKeyPem) {
+    throw new Error("ORCA_LICENSE_PRIVATE_KEY_PEM and ORCA_LICENSE_PUBLIC_KEY_PEM are required in production");
+  }
+  const privateKey = createPrivateKey(privateKeyPem);
+  const publicKey = createPublicKey(publicKeyPem);
+  if (
+    privateKey.asymmetricKeyType !== "ed25519" ||
+    publicKey.asymmetricKeyType !== "ed25519"
+  ) {
+    throw new Error("Orca license signing keys must be Ed25519");
+  }
+  const message = Buffer.from("orca-runtime-license-key-check");
+  const signature = sign(null, message, privateKey);
+  if (!verify(null, message, publicKey, signature)) {
+    throw new Error("ORCA_LICENSE_PRIVATE_KEY_PEM and ORCA_LICENSE_PUBLIC_KEY_PEM do not match");
+  }
 }
 
 export function getBaseUrl(): string {
@@ -47,10 +83,18 @@ export function getStripeConfig() {
 }
 
 export function getLicenseSigningConfig() {
-  if (process.env.ORCA_LICENSE_PRIVATE_KEY_PEM) {
+  const privateKeyPem = normalizePem(process.env.ORCA_LICENSE_PRIVATE_KEY_PEM);
+  const publicKeyPem = normalizePem(process.env.ORCA_LICENSE_PUBLIC_KEY_PEM);
+  if (privateKeyPem) {
+    if (isProductionRuntime()) {
+      if (!presentSecret(process.env.ORCA_LICENSE_KEY_VERSION)) {
+        throw new Error("ORCA_LICENSE_KEY_VERSION is required in production");
+      }
+      validateProductionLicenseKeyPair(privateKeyPem, publicKeyPem);
+    }
     return {
-      privateKeyPem: process.env.ORCA_LICENSE_PRIVATE_KEY_PEM.replaceAll("\\n", "\n"),
-      publicKeyPem: process.env.ORCA_LICENSE_PUBLIC_KEY_PEM?.replaceAll("\\n", "\n"),
+      privateKeyPem,
+      publicKeyPem,
       keyVersion: process.env.ORCA_LICENSE_KEY_VERSION ?? "orca-ed25519-v1",
       mode: "env" as const,
     };
@@ -67,6 +111,17 @@ export function getLicenseSigningConfig() {
   }
 
   throw new Error("ORCA_LICENSE_PRIVATE_KEY_PEM is required in production");
+}
+
+export function requireStripePriceConfig() {
+  const config = getStripeConfig();
+  if (isProductionRuntime() && (!config.proPriceId || !config.teamPriceId)) {
+    throw new Error("STRIPE_PRO_PRICE_ID and STRIPE_TEAM_PRICE_ID are required in production");
+  }
+  return {
+    proPriceId: config.proPriceId,
+    teamPriceId: config.teamPriceId,
+  };
 }
 
 export function requireStripeSecret(): string {

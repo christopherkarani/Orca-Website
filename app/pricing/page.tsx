@@ -106,24 +106,14 @@ export default function PricingPage() {
                 ) : (
                   <form action="/api/checkout" method="post" className="space-y-3">
                     <input type="hidden" name="tier" value={plan.tier} />
-                    <label className="block text-xs font-medium text-neutral-500">
-                      Work email
-                      <input
-                        required
-                        type="email"
-                        name="email"
-                        placeholder="you@company.com"
-                        className="mt-2 w-full border border-neutral-300 px-3 py-2 text-sm text-neutral-950 outline-none focus:border-neutral-950"
-                      />
-                    </label>
                     {plan.tier === "team" && (
                       <label className="block text-xs font-medium text-neutral-500">
                         Seats
                         <input
-                        min={1}
-                        max={250}
-                        defaultValue={5}
-                        type="number"
+                          min={1}
+                          max={250}
+                          defaultValue={5}
+                          type="number"
                           name="seatCount"
                           className="mt-2 w-full border border-neutral-300 px-3 py-2 text-sm text-neutral-950 outline-none focus:border-neutral-950"
                         />

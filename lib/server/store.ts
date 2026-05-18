@@ -35,6 +35,7 @@ export type LicenseRecord = {
   accountId: string;
   customerId: string;
   subscriptionId?: string;
+  sourceEventId?: string;
   tier: OrcaTier;
   status: "active" | "revoked";
   seatCount: number;
@@ -97,6 +98,7 @@ export type UpsertSubscriptionInput = {
 export type IssueLicenseOptions = {
   privateKeyPem: string;
   keyVersion: string;
+  sourceEventId?: string;
   now?: Date;
 };
 

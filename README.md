@@ -60,8 +60,12 @@ file is ignored by git.
 
 Clerk owns production human authentication, including GitHub social login,
 email login, session security, and account recovery. Orca stores only
-commercial records and hashed license automation API keys.
-Browser-facing POST routes reject cross-site `Origin` headers; Stripe webhooks use Stripe signature verification instead.
+commercial records and hashed license automation API keys. UI-created API keys
+default to `license:read` and `plan:read`; license rotation requires an
+explicit `license:rotate` scoped key.
+Browser-facing POST routes reject cross-site `Origin` headers. In production,
+only `ORCA_SITE_URL` and comma-separated `ORCA_ALLOWED_ORIGINS` values are
+trusted. Stripe webhooks use Stripe signature verification instead.
 
 ## Commercial Flow
 

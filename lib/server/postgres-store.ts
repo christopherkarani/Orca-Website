@@ -67,6 +67,7 @@ type LicenseRow = {
   account_id: string;
   customer_id: string;
   subscription_id: string | null;
+  source_event_id: string | null;
   tier: OrcaTier;
   status: "active" | "revoked";
   seat_count: number;
@@ -141,6 +142,7 @@ function licenseFromRow(row: LicenseRow): LicenseRecord {
     accountId: row.account_id,
     customerId: row.customer_id,
     subscriptionId: row.subscription_id ?? undefined,
+    sourceEventId: row.source_event_id ?? undefined,
     tier: row.tier,
     status: row.status,
     seatCount: row.seat_count,
@@ -170,14 +172,31 @@ export class PostgresStore implements OrcaStore {
     const id = input.id ?? `acct_${randomUUID()}`;
     const email = normalizeEmail(input.email);
     if (input.clerkUserId) {
+      const existingRows = await this.sql<AccountRow[]>`
+        SELECT * FROM accounts WHERE clerk_user_id = ${input.clerkUserId} LIMIT 1
+      `;
+      if (existingRows[0]) {
+        const rows = await this.sql<AccountRow[]>`
+          UPDATE accounts
+          SET email = ${email}, updated_at = now()
+          WHERE id = ${existingRows[0].id}
+          RETURNING *
+        `;
+        return accountFromRow(rows[0]);
+      }
       const rows = await this.sql<AccountRow[]>`
         INSERT INTO accounts (id, clerk_user_id, email)
         VALUES (${id}, ${input.clerkUserId}, ${email})
-        ON CONFLICT (clerk_user_id) WHERE clerk_user_id IS NOT NULL DO UPDATE SET
-          email = EXCLUDED.email,
+        ON CONFLICT (email) DO UPDATE SET
+          clerk_user_id = EXCLUDED.clerk_user_id,
           updated_at = now()
+        WHERE accounts.clerk_user_id IS NULL
+          OR accounts.clerk_user_id = EXCLUDED.clerk_user_id
         RETURNING *
       `;
+      if (!rows[0]) {
+        throw new Error("Account email is already linked to a different Clerk user");
+      }
       return accountFromRow(rows[0]);
     }
     const rows = await this.sql<AccountRow[]>`
@@ -294,6 +313,12 @@ export class PostgresStore implements OrcaStore {
     accountId: string,
     options: IssueLicenseOptions
   ): Promise<LicenseRecord> {
+    if (options.sourceEventId) {
+      const existingRows = await this.sql<LicenseRow[]>`
+        SELECT * FROM licenses WHERE source_event_id = ${options.sourceEventId} LIMIT 1
+      `;
+      if (existingRows[0]) return licenseFromRow(existingRows[0]);
+    }
     const account = await this.getAccountById(accountId);
     if (!account) throw new Error(`Unknown account ${accountId}`);
     const subscription =
@@ -332,7 +357,7 @@ export class PostgresStore implements OrcaStore {
     });
     const rows = await this.sql<LicenseRow[]>`
       INSERT INTO licenses (
-        id, account_id, customer_id, subscription_id, tier, status, seat_count, features,
+        id, account_id, customer_id, subscription_id, source_event_id, tier, status, seat_count, features,
         license_key, signature, issued_at, renews_at, expires_at
       )
       VALUES (
@@ -340,6 +365,7 @@ export class PostgresStore implements OrcaStore {
         ${accountId},
         ${customerId},
         ${subscription?.id ?? null},
+        ${options.sourceEventId ?? null},
         ${entitlements.tier},
         ${"active"},
         ${entitlements.seatCount},
@@ -359,6 +385,12 @@ export class PostgresStore implements OrcaStore {
     accountId: string,
     options: IssueLicenseOptions
   ): Promise<LicenseRecord> {
+    if (options.sourceEventId) {
+      const existingRows = await this.sql<LicenseRow[]>`
+        SELECT * FROM licenses WHERE source_event_id = ${options.sourceEventId} LIMIT 1
+      `;
+      if (existingRows[0]) return licenseFromRow(existingRows[0]);
+    }
     const account = await this.getAccountById(accountId);
     if (!account) throw new Error(`Unknown account ${accountId}`);
     const issuedAt = (options.now ?? new Date()).toISOString();
@@ -379,13 +411,14 @@ export class PostgresStore implements OrcaStore {
     });
     const rows = await this.sql<LicenseRow[]>`
       INSERT INTO licenses (
-        id, account_id, customer_id, tier, status, seat_count, features,
+        id, account_id, customer_id, source_event_id, tier, status, seat_count, features,
         license_key, signature, issued_at
       )
       VALUES (
         ${signed.payload.licenseId},
         ${accountId},
         ${signed.payload.customerId},
+        ${options.sourceEventId ?? null},
         ${"free"},
         ${"revoked"},
         ${1},

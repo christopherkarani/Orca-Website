@@ -4,6 +4,7 @@ import { isRetryableWebhookResult, processStripeEvent } from "@/lib/billing/webh
 import { getStore } from "@/lib/server/db";
 import {
   getLicenseSigningConfig,
+  requireStripePriceConfig,
   getStripeConfig,
   isProductionRuntime,
   requireStripeSecret,
@@ -36,9 +37,10 @@ export async function POST(request: NextRequest) {
   }
 
   const signing = getLicenseSigningConfig();
+  const priceConfig = requireStripePriceConfig();
   const result = await processStripeEvent(getStore(), event as unknown as Parameters<typeof processStripeEvent>[1], {
-    proPriceId: stripeConfig.proPriceId,
-    teamPriceId: stripeConfig.teamPriceId,
+    proPriceId: priceConfig.proPriceId,
+    teamPriceId: priceConfig.teamPriceId,
     licensePrivateKeyPem: signing.privateKeyPem,
     licenseKeyVersion: signing.keyVersion,
   });

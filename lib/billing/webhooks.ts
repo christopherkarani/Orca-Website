@@ -234,12 +234,14 @@ async function processClaimedStripeEvent(
       await store.issueLicenseForAccount(account.id, {
         privateKeyPem: config.licensePrivateKeyPem,
         keyVersion: config.licenseKeyVersion,
+        sourceEventId: event.id,
         now: processingNow,
       });
     } else {
       await store.revokePaidLicenseForAccount(account.id, {
         privateKeyPem: config.licensePrivateKeyPem,
         keyVersion: config.licenseKeyVersion,
+        sourceEventId: event.id,
         now: processingNow,
       });
     }
@@ -288,6 +290,7 @@ async function processClaimedStripeEvent(
       await store.issueLicenseForAccount(account.id, {
         privateKeyPem: config.licensePrivateKeyPem,
         keyVersion: config.licenseKeyVersion,
+        sourceEventId: event.id,
         now: processingNow,
       });
       return { processed: true };
@@ -296,6 +299,7 @@ async function processClaimedStripeEvent(
     await store.revokePaidLicenseForAccount(account.id, {
       privateKeyPem: config.licensePrivateKeyPem,
       keyVersion: config.licenseKeyVersion,
+      sourceEventId: event.id,
       now: processingNow,
     });
     return { processed: true };

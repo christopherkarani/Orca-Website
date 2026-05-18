@@ -50,6 +50,7 @@ const requiredColumns = {
     "account_id",
     "customer_id",
     "subscription_id",
+    "source_event_id",
     "tier",
     "status",
     "seat_count",

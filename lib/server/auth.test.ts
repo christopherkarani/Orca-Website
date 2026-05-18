@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createAccountApiKey,
   getAccountFromApiKey,
@@ -7,7 +7,22 @@ import {
 } from "./auth";
 import { createMemoryStore } from "./memory-store";
 
+const clerkMocks = vi.hoisted(() => ({
+  auth: vi.fn(),
+  currentUser: vi.fn(),
+}));
+
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: clerkMocks.auth,
+  currentUser: clerkMocks.currentUser,
+}));
+
 describe("account API keys", () => {
+  afterEach(() => {
+    clerkMocks.auth.mockReset();
+    clerkMocks.currentUser.mockReset();
+  });
+
   it("stores only hashed API keys and authenticates by bearer token", async () => {
     const store = createMemoryStore();
     const account = await store.upsertAccount({
@@ -65,5 +80,28 @@ describe("account API keys", () => {
     await expect(
       getAccountForLicenseRequest(store, request, "license:rotate")
     ).resolves.toBeNull();
+  });
+
+  it("does not fall back to Clerk when an Authorization header is present", async () => {
+    const store = createMemoryStore();
+    await store.upsertAccount({
+      id: "acct_clerk",
+      clerkUserId: "user_clerk",
+      email: "clerk@example.com",
+    });
+    clerkMocks.auth.mockResolvedValue({ userId: "user_clerk" });
+    clerkMocks.currentUser.mockResolvedValue({
+      primaryEmailAddress: { emailAddress: "clerk@example.com" },
+      emailAddresses: [],
+    });
+
+    const request = new NextRequest("https://orca-tx.com/api/account/license", {
+      headers: { authorization: "Bearer orca_key_oak_missing_invalid" },
+    });
+
+    await expect(
+      getAccountForLicenseRequest(store, request, "license:read")
+    ).resolves.toBeNull();
+    expect(clerkMocks.auth).not.toHaveBeenCalled();
   });
 });

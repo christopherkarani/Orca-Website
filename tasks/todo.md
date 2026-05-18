@@ -96,8 +96,8 @@ Remove the remaining repo-owned blockers that prevent a real production launch, 
 
 ## Plan
 
-- [x] Replace open email-only account access with a signed account access token flow that does not expose licenses to anyone who merely knows an email.
-- [x] Require `ORCA_AUTH_SECRET` in production instead of using a development fallback.
+- [x] Replace open email-only account access with authenticated account access that does not expose licenses to anyone who merely knows an email.
+- [x] Require production auth configuration instead of using development fallbacks. This was later migrated from custom session secrets to Clerk keys.
 - [x] Add production health/readiness route that checks app config without exposing secret values.
 - [x] Add deploy preflight script for required env, license key material, Postgres schema presence, and Stripe key/price/portal configuration where credentials are available.
 - [x] Add setup scripts for license key generation, database schema application, and signed webhook fixture verification.
@@ -107,10 +107,9 @@ Remove the remaining repo-owned blockers that prevent a real production launch, 
 
 ## Review
 
-- Fixed production auth flaw by disabling direct email login in production; account sessions now come from a verified Stripe Checkout Session route.
-- Fixed production session signing by requiring `ORCA_AUTH_SECRET` in production.
-- Fixed production session persistence by requiring a stored session row in production; a signed cookie alone no longer authenticates a customer.
-- Hardened account session storage so persisted session rows store a SHA-256 token hash instead of the raw browser cookie token.
+- Fixed production auth flaw by removing arbitrary email-only account access. This was later superseded by Clerk-managed browser authentication.
+- Fixed the production auth launch gate so production requires configured auth secrets instead of development fallbacks. The current gate is Clerk publishable/secret keys.
+- Replaced custom website sessions with Clerk sessions during the Clerk migration; Orca now stores commercial records and hashed API keys, not browser session secrets.
 - Capped Team checkout seat quantity before creating Stripe Checkout Sessions and preserved the actual Stripe subscription status from checkout success.
 - Hardened subscription mapping so Stripe price ids and line-item quantities are the source of truth for plan tier and Team seat count when portal updates change billing state.
 - Added same-origin protection for browser-facing POST routes while leaving Stripe webhooks on signature verification.
@@ -148,7 +147,7 @@ Remove the remaining repo-owned blockers that prevent a real production launch, 
 - Hardened paid-license issuing so active/trialing subscriptions must also have a future period end; stale or expired subscription periods now fail closed to Free/revoked state.
 - Expanded production DB preflight to verify required columns for account, session, login token, customer, subscription, license, and webhook tables, not just table presence.
 - Fixed delayed webhook behavior so paid entitlement freshness is evaluated at processing time, not Stripe event creation time.
-- Added a Resend production preflight email send to verify account-access email delivery with `ORCA_PREFLIGHT_EMAIL_TO`, instead of relying only on API key prefix checks.
+- Replaced the earlier Resend/custom-email launch gate with Clerk-managed human authentication and production Clerk key checks.
 - Fixed current subscription selection so account licenses and billing portal sessions prefer an entitled subscription with the furthest current period end.
 - Added Checkout route coverage for Stripe Checkout Session creation, Team seat quantity, success/cancel URLs, and downstream Orca metadata.
 - Removed stale public/default-template artifacts and retargeted the pixel parity helper from `ollama.com` to `orca-tx.com` so launch verification cannot accidentally compare or expose old clone assets.
@@ -176,11 +175,10 @@ Prompt-to-artifact checklist:
 
 - Landing/pricing pages: implemented in `app/page.tsx`, `app/pricing/page.tsx`, `app/_components/*`; runtime checked with `GET /pricing 200`; pricing test covers Free/Pro/Team, checkout CTAs, activation flow, and absence of hosted/cloud/telemetry claims.
 - Stripe Checkout: implemented in `app/api/checkout/route.ts`; `app/api/checkout/route.test.ts` verifies subscription Checkout creation, Pro/Team price routing, Team quantity, success/cancel URLs, account/subscription metadata, cross-site rejection, quantity cap, graceful browser/API failure responses, and that starting Checkout does not persist an account before Stripe confirms payment.
-- Accounts and sessions: implemented in `lib/server/auth.ts`, `app/api/auth/login/route.ts`, `app/api/auth/checkout-session/route.ts`, `app/api/auth/request-login/route.ts`, `app/api/auth/magic/route.ts`, `account_sessions` table, and `account_login_tokens` table; tests verify production direct-login rejection, required `ORCA_AUTH_SECRET`, persisted production sessions, Checkout Session auth, one-time login link request, production email delivery, throttling, generic no-enumeration responses, GET confirmation without token consumption, POST-only token consumption, replay rejection, and missing subscription-period fail-closed behavior.
+- Accounts and identity: implemented in `lib/server/auth.ts`, Clerk sign-in/sign-up pages, `proxy.ts`, and `accounts.clerk_user_id`; tests verify API-key auth, scoped API-key rejection, no API-key-to-Clerk fallback on invalid authorization headers, and Postgres linking of first-time Clerk logins to existing commercial account rows with the same email.
 - Checkout success route: `app/api/auth/checkout-session/route.ts` verifies paid completed sessions, fetches the Stripe subscription, embeds subscription period end, preserves Stripe subscription status, and redirects to account error states for Stripe lookup failures.
-- Account session storage: `lib/server/session-token.ts`, `lib/server/memory-store.ts`, and `lib/server/postgres-store.ts` hash session tokens before persistence; tests verify raw cookie tokens still authenticate while persisted records contain the hash.
-- Customer/subscription/license models: schema in `db/schema.sql`; stores in `lib/server/memory-store.ts` and `lib/server/postgres-store.ts`; preflight checks required tables and webhook idempotency columns exist, including `claimed_at` for stale claim recovery.
-- Stripe webhooks: implemented in `app/api/stripe/webhook/route.ts` with raw-body signature verification and `lib/billing/webhooks.ts` lifecycle processing; tests cover signature rejection, claim-based idempotency, concurrent duplicate delivery, retry after thrown failures, non-2xx retryable out-of-order outcomes, checkout completion, subscription create/update/cancel/payment failure, non-entitled status downgrade, and missing period rejection.
+- Customer/subscription/license/API-key models: schema in `db/schema.sql`; stores in `lib/server/memory-store.ts` and `lib/server/postgres-store.ts`; preflight checks required tables and columns, including API-key scopes, Clerk links, license source-event ids, and webhook `claimed_at` stale-claim recovery.
+- Stripe webhooks: implemented in `app/api/stripe/webhook/route.ts` with raw-body signature verification and `lib/billing/webhooks.ts` lifecycle processing; tests cover signature rejection, claim-based idempotency, concurrent duplicate delivery, retry after thrown failures, no second license if completion fails after mutation, non-2xx retryable out-of-order outcomes, checkout completion, subscription create/update/cancel/payment failure, non-entitled status downgrade, and missing period rejection.
 - Webhook fixture: `scripts/stripe-webhook-fixture.mjs` posts signed `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted` events; verified locally against `http://localhost:3001/api/stripe/webhook` with all three responses returning `{ "processed": true }`.
 - Subscription-to-license mapping: tests verify paid licenses use Stripe price ids over stale metadata and Team seat count follows Stripe line-item quantity.
 - License signing and local verification contract: implemented in `lib/license/contract.ts`; tests cover Ed25519 signing, base64url license format, tamper rejection, expiry rejection, and unknown key version rejection; docs in `docs/license-contract.md`.
@@ -189,8 +187,8 @@ Prompt-to-artifact checklist:
 - Account dashboard and license APIs: implemented in `app/account/*`, `app/api/account/license/route.ts`, and `app/api/account/license/rotate/route.ts`; tests cover dashboard rendering, unauthenticated account-page rendering without database access, unauthenticated API rejection, authenticated license fetch, JSON rotation, and browser-form rotation redirect.
 - Stripe Customer Portal: implemented in `app/api/billing/portal/route.ts`; route tests cover unauthenticated redirect, authenticated portal session creation, cross-site rejection, Stripe failure redirect, and missing-URL redirect; deploy preflight verifies an active Stripe Customer Portal configuration.
 - Activation docs: `/docs#activation`, `docs/license-contract.md`, README, and pricing/account UI document `orca license activate <key>`.
-- Security requirements: secrets only read from server env; private key and Stripe secrets are not exposed client-side; webhooks verify signatures; production DB/auth/signing config fails closed; preflight and health checks verify Clerk keys, live Stripe keys/prices, webhook endpoint/events, schema, and matching Ed25519 license key pair as applicable.
-- Browser request security: `lib/server/request-security.ts` rejects cross-site `Origin` headers for Checkout, API-key management, billing portal, and cookie-authenticated license rotation routes; tests cover same-origin, cross-origin, and missing-Origin production behavior.
+- Security requirements: secrets only read from server env; private key and Stripe secrets are not exposed client-side; webhooks verify signatures; production DB/auth/signing config fails closed; preflight verifies Clerk keys, live Stripe keys/prices, webhook endpoint/events, schema, and matching Ed25519 license key pair as applicable; production `/api/health` returns only aggregate ready/blocked state.
+- Browser request security: `lib/server/request-security.ts` rejects cross-site `Origin` headers for Checkout, API-key management, billing portal, and cookie-authenticated license rotation routes; tests cover same-origin, cross-origin, missing-Origin production behavior, and production refusal to trust arbitrary request hosts.
 - Response security headers: `next.config.ts` applies frame denial, nosniff, strict referrer policy, cross-origin opener isolation, restricted browser permissions, and HSTS across all routes.
 - Sensitive response caching: `app/account/page.tsx` explicitly calls `noStore()` with forced dynamic/no-store route config and `next.config.ts`/`proxy.ts` set no-store on account/API surfaces; locally verified production `next start` account/API no-store headers and security headers.
 - CI/deploy verification: `.github/workflows/production-readiness.yml` runs install, tests, typecheck, lint, build, audit, and fail-closed production preflight.
@@ -224,4 +222,28 @@ No additional repo-owned implementation blocker is currently known. The remainin
 - Added account dashboard API-key management, plus `/api/account/api-keys`, `/api/account/api-keys/[keyId]`, and `/api/account/plan`.
 - Updated docs, env examples, deployment preflight, readiness checks, and setup scripts to require Clerk keys instead of Resend or `ORCA_AUTH_SECRET`.
 - Verification after the migration passed: `npm test`, `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit`, `git diff --check`, and repo secret-pattern scan.
+- `npm run preflight:prod` still fails closed locally because real production env/services are not configured: site URL, Postgres, live Stripe, Clerk keys, and license signing keys.
+
+# Clerk Production Linking Hardening
+
+## Plan
+
+- [x] Audit the Clerk/API-key implementation against production account-linking behavior.
+- [x] Add a regression test for linking a first-time Clerk login to an existing commercial account row with the same verified email.
+- [x] Fix the Postgres account upsert path so existing Stripe/webhook-created accounts can be linked to Clerk without losing account ownership checks.
+- [x] Run focused tests for the new Postgres store behavior.
+- [x] Rerun the production-readiness verification suite and update this review.
+
+## Review
+
+- Fixed production account linking so a first-time Clerk/GitHub login can attach to an existing Stripe/webhook-created commercial account row by verified email, while refusing to take over an email already linked to another Clerk user.
+- Removed stale work-email fields from pricing checkout cards so paid plan CTAs flow through Clerk sign-in instead of implying custom email auth.
+- Hardened API authentication so any request with an `Authorization` header must authenticate by API key and can no longer fall back to Clerk.
+- Default UI-created API keys now use least-privilege `license:read` and `plan:read` scopes; `license:rotate` must be requested explicitly and invalid scopes are rejected.
+- Hardened production origin checks so `request.nextUrl.origin` is trusted only in local development. Production accepts `ORCA_SITE_URL` plus explicit comma-separated `ORCA_ALLOWED_ORIGINS`.
+- Hardened runtime env checks to match preflight: production license signing requires a non-placeholder key version plus matching Ed25519 private/public key material; production webhook handling requires both Stripe price ids.
+- Redacted detailed `/api/health` readiness checks in production; the route now returns only aggregate ready/blocked state there.
+- Added license `source_event_id` persistence and tests so a Stripe retry after mutation but before webhook completion does not issue a second license for the same event.
+- Added DB integrity constraints for subscription customer linkage, license subscription linkage, API-key scope allowlisting, and source-event uniqueness.
+- Verification after this pass: `npm test` (22 files, 92 tests), `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit`, `git diff --check`, secret-pattern scan, production-build HTTP checks for `/pricing`, `/docs`, `/account`, `/api/health`, and signed webhook fixture lifecycle against local dev server.
 - `npm run preflight:prod` still fails closed locally because real production env/services are not configured: site URL, Postgres, live Stripe, Clerk keys, and license signing keys.

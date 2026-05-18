@@ -44,4 +44,33 @@ describe("browser request origin guard", () => {
 
     expect(response?.status).toBe(403);
   });
+
+  it("does not trust the request host as an allowed production origin", () => {
+    process.env.ORCA_RUNTIME_ENV = "production";
+    process.env.ORCA_SITE_URL = "https://orca-tx.com";
+
+    const response = rejectInvalidOrigin(
+      new NextRequest("https://preview.example/api/account/license/rotate", {
+        method: "POST",
+        headers: { origin: "https://preview.example" },
+      })
+    );
+
+    expect(response?.status).toBe(403);
+  });
+
+  it("allows explicitly configured additional production origins", () => {
+    process.env.ORCA_RUNTIME_ENV = "production";
+    process.env.ORCA_SITE_URL = "https://orca-tx.com";
+    process.env.ORCA_ALLOWED_ORIGINS = "https://admin.orca-tx.com";
+
+    const response = rejectInvalidOrigin(
+      new NextRequest("https://preview.example/api/account/license/rotate", {
+        method: "POST",
+        headers: { origin: "https://admin.orca-tx.com" },
+      })
+    );
+
+    expect(response).toBeNull();
+  });
 });

@@ -17,7 +17,11 @@ describe("POST /api/account/license/rotate", () => {
     const store = createMemoryStore();
     setStoreForTests(store);
     const account = await store.upsertAccount({ id: "acct_rotate", email: "rotate@example.com" });
-    const { rawKey } = await createAccountApiKey(store, account.id, "CI");
+    const { rawKey } = await createAccountApiKey(store, account.id, "CI", [
+      "license:read",
+      "license:rotate",
+      "plan:read",
+    ]);
 
     const response = await POST(
       new NextRequest("http://localhost/api/account/license/rotate", {
@@ -64,7 +68,11 @@ describe("POST /api/account/license/rotate", () => {
     const store = createMemoryStore();
     setStoreForTests(store);
     const account = await store.upsertAccount({ id: "acct_rotate_form", email: "form@example.com" });
-    const { rawKey } = await createAccountApiKey(store, account.id, "CI");
+    const { rawKey } = await createAccountApiKey(store, account.id, "CI", [
+      "license:read",
+      "license:rotate",
+      "plan:read",
+    ]);
 
     const response = await POST(
       new NextRequest("http://localhost/api/account/license/rotate", {

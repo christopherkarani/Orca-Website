@@ -139,6 +139,61 @@ describe("Stripe webhook processing", () => {
     ).resolves.toEqual({ processed: true });
   });
 
+  it("does not issue a second license if webhook completion fails after mutation", async () => {
+    const store = createMemoryStore();
+    await store.upsertAccount({ id: "acct_complete_retry", email: "complete@example.com" });
+    const event = {
+      id: "evt_complete_retry",
+      type: "customer.subscription.created",
+      created: 1779062401,
+      data: {
+        object: {
+          id: "sub_complete_retry",
+          customer: "cus_complete_retry",
+          status: "active",
+          current_period_end: 1781654400,
+          metadata: { accountId: "acct_complete_retry", tier: "pro", seatCount: "1" },
+          items: { data: [{ price: { id: "price_pro" } }] },
+        },
+      },
+    } as const;
+    const originalComplete = store.completeWebhookEvent.bind(store);
+    let failOnce = true;
+    store.completeWebhookEvent = async (...args) => {
+      if (failOnce) {
+        failOnce = false;
+        throw new Error("completion failed");
+      }
+      return originalComplete(...args);
+    };
+
+    await expect(
+      processStripeEvent(store, event, {
+        proPriceId: "price_pro",
+        teamPriceId: "price_team",
+        licensePrivateKeyPem: store.testPrivateKeyPem,
+        licenseKeyVersion: "test-key",
+        now: new Date("2026-05-18T00:00:00.000Z"),
+      })
+    ).rejects.toThrow("completion failed");
+    const firstLicense = await store.getCurrentLicenseForAccount("acct_complete_retry");
+
+    await expect(
+      processStripeEvent(store, event, {
+        proPriceId: "price_pro",
+        teamPriceId: "price_team",
+        licensePrivateKeyPem: store.testPrivateKeyPem,
+        licenseKeyVersion: "test-key",
+        now: new Date("2026-05-18T00:00:00.000Z"),
+      })
+    ).resolves.toEqual({ processed: true });
+
+    expect(await store.getCurrentLicenseForAccount("acct_complete_retry")).toMatchObject({
+      id: firstLicense?.id,
+      sourceEventId: "evt_complete_retry",
+    });
+  });
+
   it("issues an expiring license from subscription lifecycle events", async () => {
     const store = createMemoryStore();
     await store.upsertAccount({ id: "acct_license", email: "license@example.com" });

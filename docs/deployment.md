@@ -63,8 +63,8 @@ Postgres schema tables and required account, API-key, billing, license, and
 webhook columns, live recurring Stripe prices, an active Customer Portal
 configuration, an enabled production webhook endpoint with the required events,
 Clerk configuration, and matching license signing key material.
-`/api/health` performs the same local configuration shape checks without
-exposing secret values.
+`/api/health` returns only aggregate ready/blocked state in production. Detailed
+readiness checks stay in local development and `npm run preflight:prod`.
 
 Then verify:
 
@@ -80,10 +80,13 @@ Then verify:
 Do not launch if the removed custom auth routes (`/api/auth/login`,
 `/api/auth/request-login`, `/api/auth/magic`) are reachable.
 Clerk owns browser sessions. Orca API keys are hashed and scoped to license
-automation only.
-Browser-facing POST routes require same-origin requests. The Stripe webhook route
-is intentionally excluded from that check and relies on Stripe signature
-verification.
+automation only. UI-created keys default to `license:read` and `plan:read`;
+create a key with `license:rotate` only for automation that must regenerate
+licenses.
+Browser-facing POST routes require same-origin requests. In production, allowed
+origins are limited to `ORCA_SITE_URL` plus comma-separated
+`ORCA_ALLOWED_ORIGINS`. The Stripe webhook route is intentionally excluded from
+that check and relies on Stripe signature verification.
 The Next.js config sets baseline response security headers for all routes:
 frame denial, nosniff, strict referrer policy, cross-origin opener isolation,
 restricted browser permissions, and HSTS.

@@ -6,7 +6,7 @@ import type { AccountApiKeyRecord, AccountRecord, OrcaStore } from "./store";
 
 export const API_KEY_SCOPES = ["license:read", "license:rotate", "plan:read"] as const;
 
-type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
+export type ApiKeyScope = (typeof API_KEY_SCOPES)[number];
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
@@ -20,6 +20,10 @@ function parseBearerToken(request: NextRequest): string | null {
   const header = request.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) return null;
   return header.slice("Bearer ".length).trim() || null;
+}
+
+function hasAuthorizationHeader(request: NextRequest): boolean {
+  return Boolean(request.headers.get("authorization"));
 }
 
 function parseApiKey(rawKey: string): { id: string; hash: string } | null {
@@ -95,7 +99,7 @@ export async function createAccountApiKey(
   store: OrcaStore,
   accountId: string,
   name: string,
-  scopes: ApiKeyScope[] = [...API_KEY_SCOPES]
+  scopes: ApiKeyScope[] = ["license:read", "plan:read"]
 ) {
   const generated = createRawApiKey();
   const record = await store.createApiKey({
@@ -132,5 +136,6 @@ export async function getAccountForLicenseRequest(
 ): Promise<AccountRecord | null> {
   const apiKeyAccount = await getAccountFromApiKey(store, request, requiredScope);
   if (apiKeyAccount) return apiKeyAccount.account;
+  if (hasAuthorizationHeader(request)) return null;
   return getAccountFromClerk(store);
 }

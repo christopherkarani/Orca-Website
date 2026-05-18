@@ -11,6 +11,7 @@ describe("pricing page rendering", () => {
     expect(html).toContain("Team");
     expect(html).toContain("Start Pro checkout");
     expect(html).toContain("Start Team checkout");
+    expect(html).not.toContain("Work email");
     expect(html).toContain("orca license activate &lt;key&gt;");
     expect(html).not.toMatch(/cloud sync|hosted monitoring|telemetry upload/i);
   });

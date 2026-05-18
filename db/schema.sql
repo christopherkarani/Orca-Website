@@ -56,6 +56,7 @@ CREATE TABLE IF NOT EXISTS licenses (
   account_id TEXT NOT NULL REFERENCES accounts(id) ON DELETE CASCADE,
   customer_id TEXT NOT NULL,
   subscription_id TEXT,
+  source_event_id TEXT,
   tier TEXT NOT NULL CHECK (tier IN ('free', 'pro', 'team')),
   status TEXT NOT NULL CHECK (status IN ('active', 'revoked')),
   seat_count INTEGER NOT NULL DEFAULT 1,
@@ -70,6 +71,47 @@ CREATE TABLE IF NOT EXISTS licenses (
 );
 
 CREATE INDEX IF NOT EXISTS licenses_account_updated_idx ON licenses(account_id, updated_at DESC);
+
+ALTER TABLE licenses
+  ADD COLUMN IF NOT EXISTS source_event_id TEXT;
+
+CREATE UNIQUE INDEX IF NOT EXISTS licenses_source_event_id_idx
+  ON licenses(source_event_id)
+  WHERE source_event_id IS NOT NULL;
+
+DO $$
+BEGIN
+  ALTER TABLE subscriptions
+    ADD CONSTRAINT subscriptions_customer_id_fkey
+    FOREIGN KEY (customer_id)
+    REFERENCES customers(stripe_customer_id)
+    ON DELETE CASCADE;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE licenses
+    ADD CONSTRAINT licenses_subscription_id_fkey
+    FOREIGN KEY (subscription_id)
+    REFERENCES subscriptions(id)
+    ON DELETE SET NULL;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
+DO $$
+BEGIN
+  ALTER TABLE account_api_keys
+    ADD CONSTRAINT account_api_keys_scopes_allowed_check
+    CHECK (
+      jsonb_typeof(scopes) = 'array'
+      AND scopes <@ '["license:read", "license:rotate", "plan:read"]'::jsonb
+    );
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS webhook_events (
   id TEXT PRIMARY KEY,
