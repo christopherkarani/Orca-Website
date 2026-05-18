@@ -33,6 +33,14 @@ async function checkHtmlPage(path, label, expectedText) {
   return text;
 }
 
+async function checkPage200(path, label) {
+  const { response, text } = await fetchResponse(path);
+  if (response.status !== 200) {
+    fail(`${label} returned ${response.status}, expected 200`);
+  }
+  return text;
+}
+
 if (!baseUrl.startsWith("https://")) {
   fail("ORCA_SITE_URL must be an https URL for production smoke checks");
 }
@@ -48,10 +56,12 @@ const pricing = await checkHtmlPage("/pricing", "pricing page", [
 rejectText("pricing page", pricing, /Work email/i);
 rejectText("pricing page", pricing, /cloud sync|hosted monitoring|telemetry upload/i);
 
-await checkHtmlPage("/account", "account page", [
+const account = await checkHtmlPage("/account", "account page", [
   "View your Orca license",
   "Sign in with GitHub",
 ]);
+const signIn = await checkPage200("/sign-in", "sign-in page");
+const signUp = await checkPage200("/sign-up", "sign-up page");
 const accountResponse = await fetch(`${baseUrl}/account`, { redirect: "manual" });
 const accountCache = accountResponse.headers.get("cache-control") ?? "";
 if (!accountCache.toLowerCase().includes("no-store")) {
@@ -76,6 +86,9 @@ if (health && "checks" in health) {
 }
 
 if (expectReady) {
+  rejectText("account page", account, /not configured|Set Clerk production keys/i);
+  rejectText("sign-in page", signIn, /not configured|Clerk production keys must be configured/i);
+  rejectText("sign-up page", signUp, /not configured|Clerk production keys must be configured/i);
   if (healthResponse.status !== 200) {
     fail(`/api/health returned ${healthResponse.status}, expected 200 with ORCA_EXPECT_READY=true`);
   }

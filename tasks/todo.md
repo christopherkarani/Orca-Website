@@ -246,6 +246,7 @@ No additional repo-owned implementation blocker is currently known. The remainin
 - Added license `source_event_id` persistence and tests so a Stripe retry after mutation but before webhook completion does not issue a second license for the same event.
 - Added DB integrity constraints for subscription customer linkage, license subscription linkage, API-key scope allowlisting, and source-event uniqueness.
 - Added `docs/production-launch-checklist.md` as the single external provisioning runbook for Clerk, Postgres, Stripe, Vercel env, license signing keys, preflight, smoke checks, and do-not-launch gates.
-- Added `npm run smoke:prod` to verify live pricing, account, docs, production health redaction, no-store account caching, and final ready-state health with `ORCA_EXPECT_READY=true`.
+- Added `npm run smoke:prod` to verify live pricing, account, docs, sign-in/sign-up, production health redaction, no-store account caching, and final ready-state health with `ORCA_EXPECT_READY=true`.
+- Added `npm run vercel:env:check` to verify required Vercel production environment variable names are present without printing secret values.
 - Verification after this pass: `npm test` (22 files, 92 tests), `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit`, `git diff --check`, secret-pattern scan, production-build HTTP checks for `/pricing`, `/docs`, `/account`, `/api/health`, and signed webhook fixture lifecycle against local dev server.
 - `npm run preflight:prod` still fails closed locally because real production env/services are not configured: site URL, Postgres, live Stripe, Clerk keys, and license signing keys.

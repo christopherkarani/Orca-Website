@@ -121,6 +121,7 @@ npx tsc --noEmit
 npm run lint
 npm run build
 npm audit
+npm run vercel:env:check
 npm run preflight:prod
 ORCA_EXPECT_READY=true npm run smoke:prod
 ```
@@ -136,6 +137,8 @@ Expected after full provisioning:
 
 - `/pricing` returns `200` and shows Free, Pro, Team, and activation steps.
 - `/account` returns `200` and Clerk sign-in works with GitHub.
+- `/account`, `/sign-in`, and `/sign-up` do not show Clerk-not-configured
+  fallback copy.
 - `/api/health` returns `200` with `{"status":"ready","production":true}`.
 - Pro Checkout redirects to Stripe Checkout.
 - Team Checkout redirects to Stripe Checkout and preserves seat quantity.
@@ -147,6 +150,7 @@ Expected after full provisioning:
 ## 7. Do Not Launch If
 
 - `npm run preflight:prod` fails.
+- `npm run vercel:env:check` reports missing production environment names.
 - GitHub Actions cannot run because of account billing lock.
 - Clerk GitHub login has not been tested on `https://orca-tx.com`.
 - Stripe webhook endpoint is missing any required event.

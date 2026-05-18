@@ -19,6 +19,7 @@ Useful commands:
 npm test
 npm run lint
 npm run build
+npm run vercel:env:check
 npm run preflight:prod
 npm run smoke:prod
 ```

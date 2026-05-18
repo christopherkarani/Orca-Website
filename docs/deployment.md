@@ -57,10 +57,13 @@ npm test
 npm run lint
 npm run build
 npm audit
+npm run vercel:env:check
 npm run preflight:prod
 ORCA_EXPECT_READY=true npm run smoke:prod
 ```
 
+`npm run vercel:env:check` verifies that all required production environment
+variable names exist in Vercel without printing their values.
 `npm run preflight:prod` verifies required production environment variables, the
 Postgres schema tables and required account, API-key, billing, license, and
 webhook columns, live recurring Stripe prices, an active Customer Portal
@@ -76,6 +79,7 @@ Then verify:
 - Team Checkout preserves quantity.
 - Checkout success redirects through `/api/auth/checkout-session` before `/account`.
 - `/account` uses Clerk sign-in/sign-up and shows license API key management for signed-in users.
+- `/sign-in` and `/sign-up` render Clerk instead of the not-configured fallback.
 - `/api/stripe/webhook` accepts signed Stripe events and rejects invalid signatures.
 - `/account` shows plan, license key, activation command, download, rotation, and billing portal action.
 - `orca license activate <key>` is documented for the CLI handoff.

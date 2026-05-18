@@ -13,6 +13,7 @@
     "webhook:fixture": "node scripts/stripe-webhook-fixture.mjs",
     "preflight:prod": "node scripts/deploy-preflight.mjs",
     "smoke:prod": "node scripts/production-smoke.mjs",
+    "vercel:env:check": "node scripts/vercel-env-check.mjs",
     "lint": "eslint",
     "parity:pixel": "node scripts/pixel-diff.mjs"
   },
