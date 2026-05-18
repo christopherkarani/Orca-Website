@@ -245,5 +245,6 @@ No additional repo-owned implementation blocker is currently known. The remainin
 - Redacted detailed `/api/health` readiness checks in production; the route now returns only aggregate ready/blocked state there.
 - Added license `source_event_id` persistence and tests so a Stripe retry after mutation but before webhook completion does not issue a second license for the same event.
 - Added DB integrity constraints for subscription customer linkage, license subscription linkage, API-key scope allowlisting, and source-event uniqueness.
+- Added `docs/production-launch-checklist.md` as the single external provisioning runbook for Clerk, Postgres, Stripe, Vercel env, license signing keys, preflight, smoke checks, and do-not-launch gates.
 - Verification after this pass: `npm test` (22 files, 92 tests), `npx tsc --noEmit`, `npm run lint`, `npm run build`, `npm audit`, `git diff --check`, secret-pattern scan, production-build HTTP checks for `/pricing`, `/docs`, `/account`, `/api/health`, and signed webhook fixture lifecycle against local dev server.
 - `npm run preflight:prod` still fails closed locally because real production env/services are not configured: site URL, Postgres, live Stripe, Clerk keys, and license signing keys.

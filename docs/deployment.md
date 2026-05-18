@@ -12,6 +12,8 @@ ORCA_SITE_URL=https://orca-tx.com
 
 Use `.env.production.example` as the production environment checklist. It uses
 placeholder values only; do not commit real deployment secrets.
+For a step-by-step operator checklist, see
+`docs/production-launch-checklist.md`.
 
 ## Database
 

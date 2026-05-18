@@ -94,3 +94,4 @@ keys as sensitive account material.
 - `docs/stripe-setup.md`: Stripe products, prices, portal, and webhook setup.
 - `docs/license-contract.md`: signed license payload and verification contract for the Orca CLI repo.
 - `docs/deployment.md`: deployment notes for `orca-tx.com`.
+- `docs/production-launch-checklist.md`: operator checklist for Clerk, Postgres, Stripe, license keys, Vercel env, and final launch gates.
