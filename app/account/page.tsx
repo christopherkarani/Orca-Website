@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import { unstable_noStore as noStore } from "next/cache";
+import Link from "next/link";
 import { AccountDashboard } from "./AccountDashboard";
 import { Footer } from "../_components/Footer";
 import { Nav } from "../_components/Nav";
@@ -18,6 +19,8 @@ export const revalidate = 0;
 export const fetchCache = "force-no-store";
 
 function LoginPanel() {
+  const clerkConfigured = Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+
   return (
     <section className="mx-auto max-w-xl border border-neutral-200 bg-white p-6">
       <p className="font-mono text-xs tracking-[0.2em] text-neutral-400 mb-4">
@@ -28,17 +31,41 @@ function LoginPanel() {
         Sign in with GitHub or email through Clerk. Orca stores billing and license
         records, but Clerk handles human account security and recovery.
       </p>
+      {!clerkConfigured && (
+        <p className="mt-4 border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          Account login is not configured yet. Set Clerk production keys before launch.
+        </p>
+      )}
       <div className="mt-6 flex flex-wrap gap-3">
-        <SignInButton mode="modal">
-          <button className="bg-black px-5 py-3 text-sm font-medium text-white">
-            Sign in
-          </button>
-        </SignInButton>
-        <SignUpButton mode="modal">
-          <button className="border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950">
-            Create account
-          </button>
-        </SignUpButton>
+        {clerkConfigured ? (
+          <>
+            <SignInButton mode="modal">
+              <button className="bg-black px-5 py-3 text-sm font-medium text-white">
+                Sign in
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950">
+                Create account
+              </button>
+            </SignUpButton>
+          </>
+        ) : (
+          <>
+            <Link
+              href="/sign-in"
+              className="bg-black px-5 py-3 text-sm font-medium text-white"
+            >
+              Sign in
+            </Link>
+            <Link
+              href="/sign-up"
+              className="border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950"
+            >
+              Create account
+            </Link>
+          </>
+        )}
         <a
           href="/pricing"
           className="inline-flex items-center justify-center border border-neutral-300 px-5 py-3 text-sm font-medium text-neutral-950"
